@@ -1,0 +1,78 @@
+#!/bin/sh
+
+# Try to get wifi info using nmcli first (most reliable)
+if command -v nmcli >/dev/null 2>&1; then
+	STATUS=$(nmcli -t -f STATE g 2>/dev/null)
+	
+	if [ "$STATUS" != "connected" ] && [ "$STATUS" != "connecting" ]; then
+		echo "󰤭"
+		exit 0
+	fi
+	
+	# Get SSID and signal strength
+	SSID=$(nmcli -t -f name c show --active 2>/dev/null | head -1)
+	SIGNAL=$(nmcli -t -f signal dev wifi 2>/dev/null | head -1)
+	
+	if [ -z "$SSID" ]; then
+		echo "󰤭"
+		exit 0
+	fi
+	
+	# Determine wifi icon based on signal strength
+	if [ -n "$SIGNAL" ]; then
+		if [ "$SIGNAL" -ge 80 ]; then
+			ICON="󰤨"
+		elif [ "$SIGNAL" -ge 60 ]; then
+			ICON="󰤥"
+		elif [ "$SIGNAL" -ge 40 ]; then
+			ICON="󰤢"
+		else
+			ICON="󰤟"
+		fi
+	else
+		ICON="󰤥"
+	fi
+	
+	echo "$ICON $SSID"
+else
+	# Fallback to iw if nmcli is not available
+	WIFI_INTERFACE=$(iw dev 2>/dev/null | grep "Interface" | awk '{print $2}' | head -1)
+	
+	if [ -z "$WIFI_INTERFACE" ]; then
+		echo "󰤭"
+		exit 0
+	fi
+	
+	# Check connection status
+	SSID=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null | grep "SSID:" | awk '{print $NF}')
+	SIGNAL=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null | grep "signal:" | awk '{print $2}' | sed 's/,//')
+	
+	if [ -z "$SSID" ]; then
+		echo "󰤭"
+		exit 0
+	fi
+	
+	# Determine wifi icon based on signal strength (iw gives negative dBm values)
+	if [ -n "$SIGNAL" ]; then
+		# Convert negative dBm to percentage (-30 = 100%, -90 = 0%)
+		PERCENT=$((100 + SIGNAL))
+		if [ "$PERCENT" -ge 80 ]; then
+			ICON="󰤨"
+		elif [ "$PERCENT" -ge 60 ]; then
+			ICON="󰤥"
+		elif [ "$PERCENT" -ge 40 ]; then
+			ICON="󰤢"
+		else
+			ICON="󰤟"
+		fi
+	else
+		ICON="󰤥"
+	fi
+	
+	echo "$ICON $SSID"
+fi
+
+case $BLOCK_BUTTON in
+	1) setsid -f "$TERMINAL" -e nmtui ;;
+	3) nmcli radio wifi toggle ;;
+esac

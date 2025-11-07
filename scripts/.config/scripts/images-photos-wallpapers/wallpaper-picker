@@ -1,0 +1,67 @@
+#!/bin/bash
+# Wallpaper picker with fzf
+
+FOLDER="$HOME/Pictures/wallpaper"
+COLORSCHEME_HOOK="/home/croc/.config/wal/hooks/colorscheme"
+
+# Get current pywal colors
+FG=$(xrdb -query | grep "^\*\.foreground" | head -1 | awk '{print $NF}')
+BG=$(xrdb -query | grep "^\*\.background" | head -1 | awk '{print $NF}')
+COLOR1=$(xrdb -query | grep "^\*\.color1" | head -1 | awk '{print $NF}')
+
+# Fallback colors
+FG="${FG:-#e0e0e0}"
+BG="${BG:-#1a1a1a}"
+COLOR1="${COLOR1:-#ff6b6b}"
+
+# Try fzf first
+if command -v fzf >/dev/null; then
+    CHOICE=$(cd "$FOLDER" && ls -1 | sort | \
+        fzf \
+            --reverse \
+            --border=rounded \
+            --border-label='[ Wallpaper Picker ]' \
+            --margin 1 \
+            --padding 1 \
+            --color "fg:$FG,bg:$BG,hl:$COLOR1,fg+:$BG,bg+:$COLOR1,border:$COLOR1,label:$COLOR1" \
+            --prompt "󰆍 Select: " \
+            --header "ESC to cancel • Enter to select" \
+            --header-first)
+    
+    if [ -z "$CHOICE" ]; then
+        exit 0
+    fi
+    
+    WALLPAPER_PATH="$FOLDER/$CHOICE"
+    WALLPAPER_NAME="$CHOICE"
+
+# Fallback to dmenu
+elif command -v dmenu >/dev/null; then
+    FILES=$(/usr/bin/ls -1 "$FOLDER")
+    CHOICE=$(printf "Random\n%s\n" "$FILES" | dmenu -i -p "Wallpaper: " \
+        -nb "$BG" -nf "$FG" -sb "$COLOR1" -sf "$BG")
+    
+    if [ -z "$CHOICE" ]; then
+        exit 0
+    fi
+    
+    if [ "$CHOICE" = "Random" ]; then
+        WALLPAPER_NAME=$(/usr/bin/ls -1 "$FOLDER" | shuf -n 1)
+        WALLPAPER_PATH="$FOLDER/$WALLPAPER_NAME"
+    else
+        WALLPAPER_NAME="$CHOICE"
+        WALLPAPER_PATH="$FOLDER/$CHOICE"
+    fi
+
+else
+    echo "Error: No suitable menu tool found (need fzf or dmenu)"
+    exit 1
+fi
+
+# Apply wallpaper and colors
+wal -i "$WALLPAPER_PATH" -o "$COLORSCHEME_HOOK"
+
+# Save last wallpaper
+echo "$WALLPAPER_NAME" > "$HOME/.cache/wal/last_wallpaper"
+
+echo "✓ Wallpaper: $WALLPAPER_NAME"

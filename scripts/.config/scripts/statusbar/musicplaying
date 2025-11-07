@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# format state to alternate between artist - title and album - title
+FORMAT_FILE="/tmp/dwmblocks_mus_format"
+[ ! -f "$FORMAT_FILE" ] && echo "0" > "$FORMAT_FILE"
+read FORMAT < "$FORMAT_FILE"
+
+# priority is: ncspot (if playing), then mpd, then fallback to paused info
+if [ -z "$MUSIC_PLAYING_PLAYERS" ]; then
+	# if MUSIC_PLAYING_PLAYERS is not set, use the default players
+	MUSIC_PLAYING_PLAYERS="ncspot chromium mpd mpv"
+fi
+
+[ "$FORMAT" -eq 0 ] && META="{{ artist }} - {{ title }}" || META="{{ album }} - {{ title }}"
+
+FOUND_PLAYING=0
+for PLAYER in $MUSIC_PLAYING_PLAYERS; do
+	# Try to get the player instance (for ncspot which has dynamic instance names)
+	if [ "$PLAYER" = "ncspot" ]; then
+		NCSPOT_INSTANCE=$(playerctl --list-all 2>/dev/null | grep ncspot | head -1)
+		if [ -z "$NCSPOT_INSTANCE" ]; then
+			continue
+		fi
+		PLAYER="$NCSPOT_INSTANCE"
+	fi
+
+	STATUS=$(playerctl --player="$PLAYER" status 2>/dev/null)
+	
+	if [ "$STATUS" = "Playing" ]; then
+		ICON=" "
+		OUTPUT=$(playerctl metadata --player "$PLAYER" --format "$META" 2>/dev/null)
+		echo "$ICON$OUTPUT"
+		FOUND_PLAYING=1
+		break
+	fi
+done
+
+# if nothing is playing, show paused info from ncspot or mpd
+if [ $FOUND_PLAYING -eq 0 ]; then
+	NCSPOT_INSTANCE=$(playerctl --list-all 2>/dev/null | grep ncspot | head -1)
+	if [ -n "$NCSPOT_INSTANCE" ]; then
+		OUTPUT=$(playerctl metadata --player "$NCSPOT_INSTANCE" --format "$META" 2>/dev/null)
+		if [ -n "$OUTPUT" ]; then
+			echo "$OUTPUT"
+		fi
+	else
+		OUTPUT=$(playerctl metadata --player mpd --format "$META" 2>/dev/null)
+		if [ -n "$OUTPUT" ]; then
+			echo "$OUTPUT"
+		fi
+	fi
+fi
+
+
+case $BLOCK_BUTTON in
+		1) echo "$(( ($FORMAT + 1) % 2 ))" > "$FORMAT_FILE" ;;
+		2) NCSPOT=$(playerctl --list-all 2>/dev/null | grep ncspot | head -1); [ -n "$NCSPOT" ] && playerctl --player "$NCSPOT" play-pause 2>/dev/null || playerctl --player mpd play-pause 2>/dev/null; pkill -RTMIN+11 "${STATUSBAR:-dwmblocks}" ;;
+		3) setsid -w -f "$TERMINAL" -e pulsemixer 2>/dev/null; pkill -RTMIN+11 "${STATUSBAR:-dwmblocks}" ;;
+		4) amixer -D pulse sset Master 10%+ 2>/dev/null ;;
+		5) amixer -D pulse sset Master 10%- 2>/dev/null ;;
+		6) setsid -f "$TERMINAL" -e "$EDITOR" "$0" ;;
+esac

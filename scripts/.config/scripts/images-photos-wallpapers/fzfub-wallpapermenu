@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+export DISPLAY=:0
+
+PICFOLDER="$HOME/Pictures"
+WALLPAPERFOLDER="$HOME/Pictures/wallpaper"
+TEMPIMG="$HOME/Pictures/wallpaper/temp"
+
+case "$#" in
+0) st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+0+0" -e sh -c "cat ~/.cache/wal/sequences > /dev/tty; exec fzfub '$WALLPAPERFOLDER' w" ;;
+2)
+  # $1 = image path, $2 = mode (dark/light)
+  if [[ "$2" == "light" ]]; then
+    wal -i "$1" -l --backend colorz --saturate 0.1 -o ~/.local/bin/pywal16 &&
+      ~/.local/bin/darken-color0 0.25 &&
+      (
+        ln -sf ~/.cache/wal/colors.Xresources ~/.Xresources
+        xrdb -remove
+        xrdb -load ~/.cache/wal/colors.Xresources
+        xdotool key super+ctrl+x
+        kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null
+      ) &
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+  else
+    # Dark mode with colorz backend at low saturation
+    wal -i "$1" --backend colorz --saturate 0.15 -o ~/.local/bin/pywal16 && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+  fi
+  ;;
+*) exit 0 ;;
+esac

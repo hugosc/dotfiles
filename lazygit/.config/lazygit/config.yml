@@ -1,0 +1,22 @@
+gui:
+  theme:
+    activeBgColor:
+      - "#404040"
+    activeFgColor:
+      - "#ffffff"
+    inactiveBgColor:
+      - "#2a2a2a"
+    inactiveFgColor:
+      - "#808080"
+    searchingActiveBgColor:
+      - "#505050"
+    searchingActiveFgColor:
+      - "#ffffff"
+    selectedLineBgColor:
+      - "#383838"
+    selectedRangeBgColor:
+      - "#383838"
+git:
+  pagers:
+    - colorArg: always
+      pager: delta --dark --paging=never
