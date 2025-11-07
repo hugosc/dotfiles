@@ -1,0 +1,31 @@
+#!/bin/bash
+# Script to refresh DWM colors after wal generates new colorscheme
+
+export DISPLAY=${DISPLAY:-:0}
+
+ln -sf ~/.cache/wal/colors.Xresources ~/.Xresources
+
+# Remove old xrdb entries and reload fresh
+xrdb -remove
+xrdb -load ~/.Xresources
+
+# Send the xrdb keybind to dwm to reload colors
+xdotool key super+ctrl+x
+
+# Refresh dwmblocks status bar (block 8 for color/theme updates)
+pkill -RTMIN+8 dwmblocks 2>/dev/null || true
+
+# Apply terminal color sequences to all running st terminals
+if [[ -f ~/.cache/wal/sequences ]]; then
+    # Send sequences to all st terminals currently open
+    for tty in /dev/pts/*; do
+        if [[ -w "$tty" ]]; then
+            cat ~/.cache/wal/sequences > "$tty" 2>/dev/null &
+        fi
+    done
+    wait
+fi
+# Reload kitty on all running instances
+if command -v kitty &> /dev/null; then
+    kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null || true
+fi
