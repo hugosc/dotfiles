@@ -1,0 +1,13 @@
+# Use "Shift+q" to quit instead of the default "q"
+[keybindings]
+"Shift+q" = "quit"
+"q" = "noop"
+# Escape key to quit
+"Esc" = "back"
+"Backspace" = "noop"
+
+# Replace f1 f3 with 1 2 3
+"1" = "queue"
+"3" = "library"
+"F1" = "noop"
+"F3" = "noop"
