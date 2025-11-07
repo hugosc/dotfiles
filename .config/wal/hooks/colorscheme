@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# pywal colorscheme hook - runs after wal generates colors
+
+# Reload Xresources
+if [ -f ~/.cache/wal/colors.Xresources ]; then
+    xrdb -remove
+    xrdb -load ~/.cache/wal/colors.Xresources
+fi
+
+# Reload kitty colors if it's running
+if command -v kitty >/dev/null; then
+    kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null
+fi
+
+# Send signal to reload colors in other apps
+xdotool key super+ctrl+x 2>/dev/null || true
