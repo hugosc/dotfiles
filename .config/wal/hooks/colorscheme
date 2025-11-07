@@ -12,5 +12,8 @@ if command -v kitty >/dev/null; then
     kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null
 fi
 
+# Refresh dwmblocks status bar (block 8 for color/theme updates)
+pkill -RTMIN+8 dwmblocks 2>/dev/null || true
+
 # Send signal to reload colors in other apps
 xdotool key super+ctrl+x 2>/dev/null || true
