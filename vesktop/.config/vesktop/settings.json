@@ -1,5 +1,5 @@
 {
-    "discordBranch": "stable",
+    "discordBranch": "ptb",
     "minimizeToTray": true,
     "arRPC": true,
     "splashColor": "rgb(133, 146, 173)",
