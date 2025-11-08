@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+
+# Screen recording script with ffmpeg
+# Toggle recording with a single command
+# Saves to ~/Videos with timestamp
+# Integrates with dwmblocks for status indicator
+
+REC_DIR="${HOME}/Videos"
+REC_FLAG="${HOME}/.cache/recording"
+REC_GEOMETRY="${HOME}/.cache/rec_geometry"
+
+# Create directories if they don't exist
+mkdir -p "$REC_DIR" "$HOME/.cache"
+
+is_recording() {
+	[[ -f "$REC_FLAG" ]]
+}
+
+get_timestamp() {
+	date '+%Y%m%d_%H%M%S'
+}
+
+start_recording() {
+	if is_recording; then
+		echo "Already recording"
+		exit 1
+	fi
+
+	# Get monitor geometry using xdotool
+	geometry=$(xdotool getactivewindow getwindowgeometry 2>/dev/null)
+	
+	# Fallback: try to get primary monitor resolution
+	if ! geometry=$(xrandr 2>/dev/null | grep "primary connected" | head -1 | grep -oE '[0-9]+x[0-9]+\+[0-9]+\+[0-9]'); then
+		# Final fallback: get full screen resolution
+		geometry=$(xdotool getdisplaygeometry | awk '{print $1"x"$2"+0+0"}')
+	fi
+
+	# Save geometry for reference
+	echo "$geometry" > "$REC_GEOMETRY"
+
+	timestamp=$(get_timestamp)
+	output="${REC_DIR}/screenrecord_${timestamp}.mp4"
+	
+	# Create flag file to indicate recording is active
+	touch "$REC_FLAG"
+	
+	# Start ffmpeg recording in background
+	# Uses h264 codec, aac audio, 30fps
+	ffmpeg -f x11grab \
+		-framerate 30 \
+		-s "$geometry" \
+		-i "$DISPLAY" \
+		-f pulse \
+		-ac 2 \
+		-i default \
+		-c:v libx264 \
+		-crf 23 \
+		-c:a aac \
+		-q:a 4 \
+		-y "$output" \
+		>/dev/null 2>&1 &
+	
+	# Save the PID for stopping later
+	echo $! > "${REC_FLAG}.pid"
+	
+	notify-send --urgency=normal "Recording started" "Saving to $output"
+}
+
+stop_recording() {
+	if ! is_recording; then
+		echo "Not recording"
+		exit 1
+	fi
+
+	# Get the ffmpeg process ID
+	pid=$(cat "${REC_FLAG}.pid" 2>/dev/null)
+	
+	if [[ -n "$pid" ]]; then
+		# Send SIGINT to ffmpeg to gracefully finish encoding
+		kill -INT "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
+		
+		# Wait for process to finish
+		wait "$pid" 2>/dev/null
+	fi
+	
+	# Remove flag files
+	rm -f "$REC_FLAG" "${REC_FLAG}.pid" "$REC_GEOMETRY"
+	
+	# Give time for file to be written
+	sleep 1
+	
+	notify-send --urgency=normal "Recording stopped" "File saved to ${REC_DIR}"
+}
+
+status() {
+	if is_recording; then
+		# Show recording indicator
+		echo "🔴"
+	else
+		# Return empty for dwmblocks when not recording
+		return 1
+	fi
+}
+
+toggle_recording() {
+	if is_recording; then
+		stop_recording
+	else
+		start_recording
+	fi
+}
+
+case "$1" in
+	start)   start_recording ;;
+	stop)    stop_recording ;;
+	status)  status ;;
+	toggle)  toggle_recording ;;
+	*)
+		cat << EOF
+Usage: $0 <command>
+
+Commands:
+  start    - Start screen recording
+  stop     - Stop screen recording
+  toggle   - Toggle recording on/off (use with keybind)
+  status   - Show recording status (for dwmblocks)
+
+Examples:
+  $0 toggle         # Toggle recording
+  $0 status         # Check if recording (returns empty if not)
+EOF
+		exit 1
+		;;
+esac

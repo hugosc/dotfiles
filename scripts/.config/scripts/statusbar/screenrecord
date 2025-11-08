@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# dwmblocks status for screen recording
+# Shows red dot when recording, stays empty otherwise
+
+~/.config/scripts/screenrecord status
