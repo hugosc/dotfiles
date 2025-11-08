@@ -29,3 +29,8 @@ fi
 if command -v kitty &> /dev/null; then
     kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null || true
 fi
+
+
+
+
+
