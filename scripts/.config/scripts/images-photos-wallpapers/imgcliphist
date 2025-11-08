@@ -5,34 +5,37 @@ export DISPLAY="${DISPLAY:-:0}"
 hist=~/.cache/hist
 
 add() {
-	[ -e "$hist" ] || mkdir -p $hist
-	isimg=$(xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -i png)
-	[[ -n $isimg ]] && xclip -selection clipboard -t image/png -o > $hist/$(date '+%Y%m%d_%H%M%S').png && notify-send --urgency=low "Image added to clipboard history"
+  [ -e "$hist" ] || mkdir -p $hist
+  isimg=$(xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -i png)
+  [[ -n $isimg ]] && xclip -selection clipboard -t image/png -o >$hist/$(date '+%Y%m%d_%H%M%S').png && notify-send --urgency=low "$(printf '\uf0c6') clip history"
 }
 
 sel() {
-	[[ ! -d "$hist" ]] && notify-send "No image history yet" && exit 0
-	
-	if command -v nsxiv >/dev/null; then
-		# Use nsxiv for nice image preview
-		# Single image: Press 'Q' to select current image and quit
-		# Multiple images: Press 'm' to mark, then 'q' to quit
-		selected=$(nsxiv -otb "$hist"/*)
-		# nsxiv outputs full paths, so extract just the filename
-		[[ -n "$selected" ]] && selected=$(basename "$selected")
-	else
-		# Fallback to dmenu if nsxiv is not installed
-		DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
-		selected=$(ls -t "$hist" | dmenu $DMENU_COLORS -c -l 20 -i -p "Image:" -fn "monospace:size=10")
-		# Extract just the filename if dmenu returns full path
-		[[ "$selected" =~ / ]] && selected=$(basename "$selected")
-	fi
-	
-	[[ -n "$selected" ]] && xclip -i -selection clipboard -t image/png "$hist/$selected" && notify-send --urgency=low "Image copied to clipboard"
+  [[ ! -d "$hist" ]] && notify-send "No image history yet" && exit 0
+
+  if command -v nsxiv >/dev/null; then
+    # Use nsxiv for nice image preview
+    # Single image: Press 'Q' to select current image and quit
+    # Multiple images: Press 'm' to mark, then 'q' to quit
+    selected=$(nsxiv -otb "$hist"/*)
+    # nsxiv outputs full paths, so extract just the filename
+    [[ -n "$selected" ]] && selected=$(basename "$selected")
+  else
+    # Fallback to dmenu if nsxiv is not installed
+    DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
+    selected=$(ls -t "$hist" | dmenu $DMENU_COLORS -c -l 20 -i -p "Image:" -fn "monospace:size=10")
+    # Extract just the filename if dmenu returns full path
+    [[ "$selected" =~ / ]] && selected=$(basename "$selected")
+  fi
+
+  [[ -n "$selected" ]] && xclip -i -selection clipboard -t image/png "$hist/$selected" && notify-send --urgency=low "Image copied to clipboard"
 }
 
 case "$1" in
-	add*) add "$@" ;;
-	sel*) sel "$@" ;;
-	*) printf "$0 | file: $hist\n\nadd - add image from clipboard to history\nsel - select image: press 'Q' for single image, or 'm' to mark multiple then 'q'\n" ; exit 0 ;;
+add*) add "$@" ;;
+sel*) sel "$@" ;;
+*)
+  printf "$0 | file: $hist\n\nadd - add image from clipboard to history\nsel - select image: press 'Q' for single image, or 'm' to mark multiple then 'q'\n"
+  exit 0
+  ;;
 esac
