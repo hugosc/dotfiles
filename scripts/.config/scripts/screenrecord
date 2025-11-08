@@ -46,29 +46,18 @@ start_recording() {
 	touch "$REC_FLAG"
 	
 	# Start ffmpeg recording in background
-	# Uses h264 codec, 30fps, medium quality + dual audio
-	# Audio tracks:
-	#   - Track 0: Mic input (alsa_input.pci-0000_00_1f.3.analog-stereo or default input device)
-	#   - Track 1: Screen audio (default PipeWire output)
-	# This allows muting either track during editing
+	# Uses h264 codec, 30fps, medium quality + mic audio
 	ffmpeg -f x11grab \
 		-framerate 30 \
 		-s "$geometry" \
 		-i "$DISPLAY" \
 		-f pulse \
-		-i "$(pactl get-default-source)" \
-		-f pulse \
-		-i "$(pactl get-default-sink)".monitor \
+		-i alsa_input.pci-0000_00_1f.3.analog-stereo \
 		-c:v libx264 \
 		-crf 23 \
 		-preset fast \
-		-c:a:0 aac \
+		-c:a aac \
 		-q:a 4 \
-		-c:a:1 aac \
-		-q:a 4 \
-		-map 0:v:0 \
-		-map 1:a:0 \
-		-map 2:a:0 \
 		-y "$output" \
 		>/dev/null 2>&1 &
 	
