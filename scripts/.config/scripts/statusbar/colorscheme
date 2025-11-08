@@ -1,0 +1,9 @@
+#!/bin/bash
+# Display current colorscheme info (triggered by signal 8 from wal)
+# This block doesn't need to display anything - it exists to allow
+# dwmblocks to respond to wallpaper color changes via signal 8
+
+# Optional: show a color indicator if you want
+if [[ -f ~/.cache/wal/colorscheme ]]; then
+    cat ~/.cache/wal/colorscheme
+fi
