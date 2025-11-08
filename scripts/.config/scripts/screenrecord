@@ -46,14 +46,19 @@ start_recording() {
 	touch "$REC_FLAG"
 	
 	# Start ffmpeg recording in background
-	# Uses h264 codec, 30fps, medium quality
+	# Uses h264 codec, 30fps, medium quality + system audio
+	# Audio source: PipeWire (captures system audio like music)
 	ffmpeg -f x11grab \
 		-framerate 30 \
 		-s "$geometry" \
 		-i "$DISPLAY" \
+		-f pulse \
+		-i default \
 		-c:v libx264 \
 		-crf 23 \
 		-preset fast \
+		-c:a aac \
+		-q:a 4 \
 		-y "$output" \
 		>/dev/null 2>&1 &
 	
