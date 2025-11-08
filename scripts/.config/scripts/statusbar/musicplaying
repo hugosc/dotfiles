@@ -32,9 +32,12 @@ for PLAYER in $MUSIC_PLAYING_PLAYERS; do
 	if [ "$STATUS" = "Playing" ]; then
 		ICON=" "
 		OUTPUT=$(timeout 0.5 playerctl metadata --player "$PLAYER" --format "$META" 2>/dev/null)
-		echo "$ICON$OUTPUT"
-		FOUND_PLAYING=1
-		break
+		# Only show if output is valid (not empty, not "?", not just separators/whitespace)
+		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && echo "$OUTPUT" | grep -qv '^ *- *$'; then
+			printf "%s%s" "$ICON" "$OUTPUT"
+			FOUND_PLAYING=1
+			break
+		fi
 	fi
 done
 
@@ -43,15 +46,15 @@ if [ $FOUND_PLAYING -eq 0 ]; then
 	NCSPOT_INSTANCE=$(timeout 0.5 playerctl --list-all 2>/dev/null | grep ncspot | head -1)
 	if [ -n "$NCSPOT_INSTANCE" ]; then
 		OUTPUT=$(timeout 0.5 playerctl metadata --player "$NCSPOT_INSTANCE" --format "$META" 2>/dev/null)
-		# Only show if output is not empty and not just "?"
-		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && [ "$OUTPUT" != " - " ]; then
-			echo "$OUTPUT"
+		# Only show if output is valid (not empty, not "?", not just separators/whitespace)
+		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && echo "$OUTPUT" | grep -qv '^ *- *$'; then
+			printf "%s" "$OUTPUT"
 		fi
 	else
 		OUTPUT=$(timeout 0.5 playerctl metadata --player mpd --format "$META" 2>/dev/null)
-		# Only show if output is not empty and not just "?"
-		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && [ "$OUTPUT" != " - " ]; then
-			echo "$OUTPUT"
+		# Only show if output is valid (not empty, not "?", not just separators/whitespace)
+		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && echo "$OUTPUT" | grep -qv '^ *- *$'; then
+			printf "%s" "$OUTPUT"
 		fi
 	fi
 fi

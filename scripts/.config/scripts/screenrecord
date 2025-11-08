@@ -25,6 +25,11 @@ start_recording() {
 		echo "Already recording"
 		exit 1
 	fi
+	
+	# Clean up any orphaned ffmpeg screen recording processes
+	pkill -INT -f "ffmpeg -f x11grab.*screenrecord_" 2>/dev/null
+	sleep 0.5
+	pkill -9 -f "ffmpeg -f x11grab.*screenrecord_" 2>/dev/null
 
 	# Get screen geometry - extract just WxH
 	# xrandr output: "1920x1080+0+0" -> we need "1920x1080"
@@ -74,19 +79,32 @@ stop_recording() {
 		exit 1
 	fi
 
-	# Get the ffmpeg process ID
+	# Get the ffmpeg process ID and output file
 	pid=$(cat "${REC_FLAG}.pid" 2>/dev/null)
-	
-	if [[ -n "$pid" ]]; then
-		# Send SIGINT to ffmpeg to gracefully finish encoding
-		kill -INT "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null
-		
-		# Wait for process to finish
-		wait "$pid" 2>/dev/null
-	fi
-	
-	# Get the output file path
 	output=$(cat "${REC_FLAG}.output" 2>/dev/null)
+	
+	if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+		# Send SIGINT to ffmpeg to gracefully finish encoding
+		kill -INT "$pid" 2>/dev/null
+		
+		# Wait for process to finish (with timeout)
+		for i in {1..10}; do
+			kill -0 "$pid" 2>/dev/null || break
+			sleep 0.5
+		done
+		
+		# If still running, force kill
+		kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+	else
+		# Fallback: PID is stale/missing, find and kill by output filename
+		if [[ -n "$output" ]]; then
+			# Use SIGINT for graceful shutdown
+			pkill -INT -f "ffmpeg.*$output" 2>/dev/null
+			sleep 2
+			# Force kill if still running
+			pkill -9 -f "ffmpeg.*$output" 2>/dev/null
+		fi
+	fi
 	
 	# Remove flag files
 	rm -f "$REC_FLAG" "${REC_FLAG}.pid" "${REC_FLAG}.output" "$REC_GEOMETRY"
@@ -94,16 +112,13 @@ stop_recording() {
 	# Give time for file to be written
 	sleep 1
 	
-	# Copy file to clipboard in tar format (same way as file managers do it)
+	# Copy file URI to clipboard like file managers do (text/uri-list format)
+	# This allows pasting into Discord as if drag-dropping from a file manager
 	if [[ -n "$output" && -f "$output" ]]; then
-		archive=$(mktemp) || exit 1
-		trap 'rm -f "$archive"' RETURN
-		# Create tar archive without path info (for consistent behavior)
-		tar -cf "$archive" -C "$(dirname "$output")" "$(basename "$output")"
-		# Copy to primary clipboard (for Discord compatibility)
-		gzip -c "$archive" | xclip -selection clipboard -i
+		file_uri="file://${output}"
+		echo -n "$file_uri" | xclip -selection clipboard -t text/uri-list -i
 		filename=$(basename "$output")
-		notify-send --urgency=normal "Recording stopped" "$filename"
+		notify-send --urgency=normal "Recording stopped" "$filename (copied to clipboard)"
 	fi
 }
 
