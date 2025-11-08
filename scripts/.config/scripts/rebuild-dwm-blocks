@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Rebuild dwmblocks and dwm with screen recording support
+
+set -e
+
+echo "📦 Rebuilding dwmblocks..."
+cd ~/dotfiles/dwmblocks
+make clean
+make
+sudo make install
+pkill -9 dwmblocks || true
+sleep 1
+~/dotfiles/dwmblocks/dwmblocks &
+
+echo "✅ dwmblocks rebuilt and restarted"
+
+echo ""
+echo "📦 Rebuilding dwm..."
+cd ~/dwm
+make clean
+make
+sudo make install
+
+echo "✅ dwm rebuilt"
+echo ""
+echo "🔄 Restarting dwm..."
+# Send signal to restart dwm gracefully
+pkill -HUP -f "^dwm$" || true
+
+echo "✅ Done! Press Alt+F2 to refresh dwm if needed"
