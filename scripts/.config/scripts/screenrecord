@@ -26,15 +26,16 @@ start_recording() {
 		exit 1
 	fi
 
-	# Get monitor geometry using xdotool
-	geometry=$(xdotool getactivewindow getwindowgeometry 2>/dev/null)
+	# Get screen geometry - extract just WxH
+	# xrandr output: "1920x1080+0+0" -> we need "1920x1080"
+	full_geometry=$(xrandr | grep " connected primary" | grep -oE '[0-9]+x[0-9]+\+[0-9]+\+[0-9]+')
+	geometry=$(echo "$full_geometry" | cut -d+ -f1)
 	
-	# Fallback: try to get primary monitor resolution
-	if ! geometry=$(xrandr 2>/dev/null | grep "primary connected" | head -1 | grep -oE '[0-9]+x[0-9]+\+[0-9]+\+[0-9]'); then
-		# Final fallback: get full screen resolution
-		geometry=$(xdotool getdisplaygeometry | awk '{print $1"x"$2"+0+0"}')
+	# Fallback if that fails
+	if [[ -z "$geometry" ]]; then
+		geometry=$(xdotool getdisplaygeometry | awk '{print $1"x"$2}')
 	fi
-
+	
 	# Save geometry for reference
 	echo "$geometry" > "$REC_GEOMETRY"
 
@@ -45,18 +46,14 @@ start_recording() {
 	touch "$REC_FLAG"
 	
 	# Start ffmpeg recording in background
-	# Uses h264 codec, aac audio, 30fps
+	# Uses h264 codec, 30fps, medium quality
 	ffmpeg -f x11grab \
 		-framerate 30 \
 		-s "$geometry" \
 		-i "$DISPLAY" \
-		-f pulse \
-		-ac 2 \
-		-i default \
 		-c:v libx264 \
 		-crf 23 \
-		-c:a aac \
-		-q:a 4 \
+		-preset fast \
 		-y "$output" \
 		>/dev/null 2>&1 &
 	
