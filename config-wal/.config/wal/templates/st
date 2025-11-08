@@ -1,0 +1,38 @@
+! vim:ft=xdefaults
+! st terminal colors
+
+st.foreground: {foreground}
+st.background: {background}
+st.cursor: {cursor}
+
+! blacks
+st.color0: {color0}
+st.color8: {color8}
+
+! reds
+st.color1: {color1}
+st.color9: {color9}
+
+! greens
+st.color2: {color2}
+st.color10: {color10}
+
+! yellows
+st.color3: {color3}
+st.color11: {color11}
+
+! blues
+st.color4: {color4}
+st.color12: {color12}
+
+! magentas
+st.color5: {color5}
+st.color13: {color13}
+
+! cyans
+st.color6: {color6}
+st.color14: {color14}
+
+! whites
+st.color7: {color7}
+st.color15: {color15}

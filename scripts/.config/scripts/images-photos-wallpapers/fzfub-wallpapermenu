@@ -18,9 +18,11 @@ case "$#" in
 		# Reload pywal colors into xrdb before launching menu
 		[ -f ~/.cache/wal/colors.Xresources ] && xrdb -merge ~/.cache/wal/colors.Xresources
 		[ -f ~/.cache/wal/xrdb_extra ] && xrdb -merge ~/.cache/wal/xrdb_extra
+		[ -f ~/.cache/wal/st ] && xrdb -merge ~/.cache/wal/st
 		# Source and export FZF colors
 		[ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
-		st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+0+0" -e fzfub "$WPFOLDER" w || exit 0 
+		# Launch st and apply sequences immediately, then run fzfub
+		st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+0+0" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0 
 		;;
 	1) wal -i "$1" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1 ;;
 	2) 
