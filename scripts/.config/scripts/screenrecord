@@ -94,9 +94,14 @@ stop_recording() {
 	# Give time for file to be written
 	sleep 1
 	
-	# Copy file to clipboard using xclip-copyfile (same way as file managers do it)
+	# Copy file to clipboard in tar format (same way as file managers do it)
 	if [[ -n "$output" && -f "$output" ]]; then
-		xclip-copyfile "$output"
+		archive=$(mktemp) || exit 1
+		trap 'rm -f "$archive"' RETURN
+		# Create tar archive without path info (for consistent behavior)
+		tar -cf "$archive" -C "$(dirname "$output")" "$(basename "$output")"
+		# Copy to primary clipboard (for Discord compatibility)
+		gzip -c "$archive" | xclip -selection clipboard -i
 		filename=$(basename "$output")
 		notify-send --urgency=normal "Recording stopped" "$filename"
 	fi
