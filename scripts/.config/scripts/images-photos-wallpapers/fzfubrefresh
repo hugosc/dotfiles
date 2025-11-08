@@ -2,4 +2,10 @@
 # st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "105x12-100+270" -e fzfub $(dirname $1) m || exit 0
 # I'll set a global var PICS instead, as to prevent refreshing into a subdirectory
 # could also manually call the directory of choice, in this refresh command
-ueberzugpp cmd -s "$SOCKET" -a exit && st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "107x12-100+270" -e fzfub $PICS m || exit 0
+# Center the window: get screen dimensions and calculate offset
+read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+TERM_W=$((107 * 8))  # approximate width in pixels (chars * avg char width)
+TERM_H=$((12 * 27))  # approximate height in pixels (lines * font size)
+OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
+OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
+ueberzugpp cmd -s "$SOCKET" -a exit && st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "107x12+${OFFSET_X}+${OFFSET_Y}" -e fzfub $PICS m || exit 0

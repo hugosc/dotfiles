@@ -9,7 +9,13 @@ NOTIFYCMD=$(which dunstify 2>/dev/null || which notify-send 2>/dev/null) # use d
 MENUCMD=$(which wmenu 2>/dev/null || which dmenu 2>/dev/null) # use wmenu if available, otherwise dmenu
 
 fzimgmgk() { # requires fzfub + imgmgk script (in this repo). if you aren't using st, switch shell+parameters
-	st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "105x12-100+270" -e fzfub $FOLDER m || exit 0
+	# Center the window: get screen dimensions and calculate offset
+	read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+	TERM_W=$((105 * 8))  # approximate width in pixels (chars * avg char width)
+	TERM_H=$((12 * 27))  # approximate height in pixels (lines * font size)
+	OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
+	OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
+	st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "105x12+${OFFSET_X}+${OFFSET_Y}" -e fzfub $FOLDER m || exit 0
 }
 
 transfer() { # pull photos from sd card into a folder for today's date

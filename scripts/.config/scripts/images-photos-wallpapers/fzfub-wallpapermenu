@@ -22,7 +22,13 @@ case "$#" in
 		# Source and export FZF colors
 		[ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
 		# Launch st and apply sequences immediately, then run fzfub
-		st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+0+0" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0 
+		# Center the window: get screen dimensions and calculate offset
+		read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+		TERM_W=$((160 * 8))  # approximate width in pixels (chars * avg char width)
+		TERM_H=$((25 * 14))  # approximate height in pixels (lines * font size)
+		OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
+		OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
+		st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0 
 		;;
 	1) wal -i "$1" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1 ;;
 	2) 
