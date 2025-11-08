@@ -2,10 +2,10 @@
 
 # Screen recording script with ffmpeg
 # Toggle recording with a single command
-# Saves to ~/Videos with timestamp
+# Saves to ~/Videos/recordings with timestamp
 # Integrates with dwmblocks for status indicator
 
-REC_DIR="${HOME}/Videos"
+REC_DIR="${HOME}/Videos/recordings"
 REC_FLAG="${HOME}/.cache/recording"
 REC_GEOMETRY="${HOME}/.cache/rec_geometry"
 
