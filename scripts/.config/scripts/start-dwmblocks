@@ -1,0 +1,4 @@
+#!/bin/sh
+# Start dwmblocks - kills any existing instance first
+pkill dwmblocks
+exec $HOME/dotfiles/dwmblocks/dwmblocks
