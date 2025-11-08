@@ -34,3 +34,9 @@ fi
 if command -v kitty &> /dev/null; then
     kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null || true
 fi
+
+# Update dunst colors
+if [[ -f ~/.cache/wal/dunstrc ]]; then
+    cp ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
+    pkill -HUP dunst 2>/dev/null || true
+fi
