@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Robust clipboard monitor for X11 feeding cliphist
+# - Prefer event-driven via clipnotify
+# - Fallback to efficient polling with binary-safe dedup
+
+set -euo pipefail
+export DISPLAY="${DISPLAY:-:0}"
+
+# Ensure cliphist exists
+if ! command -v cliphist >/dev/null 2>&1; then
+  echo "cliphist not found in PATH" >&2
+  exit 1
+fi
+
+# Track last store time and hash to prevent immediate duplicates
+last_store_time=0
+last_stored_hash=""
+
+# Helper: store clipboard content, preferring image when available
+store_current_clipboard() {
+  local current_time=$(date +%s)
+  local cur_hash=""
+  
+  # Compute hash of current clipboard content
+  if xclip -selection clipboard -t image/png -o >/dev/null 2>&1; then
+    local tmp
+    tmp=$(mktemp --suffix=.png)
+    if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
+      cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
+      
+      # Skip if same hash and within 2 seconds of last store (prevents copy-loop)
+      if [[ "$cur_hash" == "$last_stored_hash" ]] && (( current_time - last_store_time < 2 )); then
+        rm -f "$tmp"
+        return
+      fi
+      
+      cliphist store <"$tmp" 2>/dev/null || true
+      last_stored_hash="$cur_hash"
+      last_store_time=$current_time
+      rm -f "$tmp"
+    else
+      rm -f "$tmp"
+    fi
+  else
+    # Fallback to text
+    if text=$(xclip -selection clipboard -o 2>/dev/null); then
+      cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
+      
+      # Skip if same hash and within 2 seconds of last store
+      if [[ "$cur_hash" == "$last_stored_hash" ]] && (( current_time - last_store_time < 2 )); then
+        return
+      fi
+      
+      printf "%s" "$text" | cliphist store 2>/dev/null || true
+      last_stored_hash="$cur_hash"
+      last_store_time=$current_time
+    fi
+  fi
+}
+
+# Preferred: use clipnotify for change events (Arch package: clipnotify)
+if command -v clipnotify >/dev/null 2>&1; then
+  while clipnotify; do
+    store_current_clipboard
+  done
+  exit 0
+fi
+
+# Fallback: polling with binary-safe deduplication
+# Notes:
+# - We compute a sha256 of current payload (image via temp file, text via pipe)
+# - Only store when hash changes or type flips between text/image
+last_hash=""
+last_type=""
+
+while true; do
+  if xclip -selection clipboard -t image/png -o >/dev/null 2>&1; then
+    tmp=$(mktemp --suffix=.png)
+    if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
+      cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
+      if [[ "$cur_hash" != "$last_hash" || "$last_type" != "image" ]]; then
+        cliphist store <"$tmp" 2>/dev/null || true
+        last_hash="$cur_hash"
+        last_type="image"
+      fi
+    fi
+    rm -f "$tmp"
+  else
+    # Text path
+    if text=$(xclip -selection clipboard -o 2>/dev/null); then
+      cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
+      if [[ "$cur_hash" != "$last_hash" || "$last_type" != "text" ]]; then
+        printf "%s" "$text" | cliphist store 2>/dev/null || true
+        last_hash="$cur_hash"
+        last_type="text"
+      fi
+    fi
+  fi
+  # Polling interval: balance responsiveness vs CPU
+  sleep 0.3
+done

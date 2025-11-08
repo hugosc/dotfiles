@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Cliphist image history viewer with ueberzug++ previews
+# Usage: cliphist-images-preview
+# Launch in st for best results with wal colors
+
+export DISPLAY="${DISPLAY:-:0}"
+HELPER="/home/croc/.config/scripts/shortcuts-menus/cliphist-helper"
+PREVIEW_WRAPPER="/home/croc/.config/scripts/shortcuts-menus/cliphist-preview-wrapper"
+
+# Check dependencies
+for cmd in cliphist ueberzugpp fzf xclip; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Error: $cmd not found" >&2
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+done
+
+# ueberzugpp setup
+case "$(uname -a)" in
+    *Darwin*) UEBERZUG_TMP_DIR="$TMPDIR" ;;
+    *) UEBERZUG_TMP_DIR="/tmp" ;;
+esac
+
+# Work directory for decoded images
+WORK_DIR=$(mktemp -d -t cliphist-preview.XXXXXX)
+
+cleanup() {
+    [[ -n "${SOCKET:-}" ]] && ueberzugpp cmd -s "$SOCKET" -a exit 2>/dev/null || true
+    [[ -n "${WORK_DIR:-}" ]] && rm -rf "$WORK_DIR"
+}
+trap cleanup HUP INT QUIT TERM EXIT
+
+UB_PID_FILE="$UEBERZUG_TMP_DIR/.$(uuidgen)"
+ueberzugpp layer --no-stdin --silent --pid-file "$UB_PID_FILE" 2>/dev/null &
+sleep 0.2
+UB_PID=$(cat "$UB_PID_FILE" 2>/dev/null || echo "")
+if [[ -z "$UB_PID" ]]; then
+    echo "Error: Failed to start ueberzugpp" >&2
+    read -p "Press Enter to exit..."
+    exit 1
+fi
+export SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
+
+# Generate image list without decoding upfront
+# Format: cliphist ID<tab>display_name<tab>original_preview<tab>file_path
+generate_image_list() {
+    local counter=1
+    cliphist list | grep -a "\[\[.*binary data.*\]\]$" | while IFS=$'\t' read -r id preview; do
+        # Extract just the numeric ID from the line
+        numeric_id=$(echo "$id" | awk '{print $1}')
+        img_file="$WORK_DIR/${numeric_id}.png"
+        
+        # Extract dimensions and size from the preview (no decoding yet!)
+        dimensions=$(echo "$preview" | grep -oP '\d+x\d+' || echo "unknown")
+        size=$(echo "$preview" | grep -oP '\d+(\.\d+)?\s+(B|KiB|MiB|GiB)' || echo "?")
+        
+        # Create a more descriptive name
+        # Format: "#N · WxH · SIZE · TYPE"
+        display_name=$(printf "#%-3d · %-10s · %-8s" "$counter" "$dimensions" "$size")
+        
+        # Add type hints based on properties (fast checks only)
+        if [[ "$dimensions" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)$ ]]; then
+            display_name+=" · screenshot"
+        elif [[ "$size" =~ ^[0-9]+\s+(B|KiB)$ ]] && [[ ! "$size" =~ ^[5-9][0-9]{2,}\s+KiB$ ]]; then
+            # Small size (< 500 KiB) likely a graphic/icon
+            display_name+=" · graphic"
+        elif [[ "$size" =~ MiB|GiB ]]; then
+            display_name+=" · photo"
+        fi
+        
+        # Output: ID<tab>display_name<tab>original_preview<tab>file_path
+        printf "%s\t%s\t%s\t%s\n" "$numeric_id" "$display_name" "$preview" "$img_file"
+        ((counter++))
+    done
+}
+
+# Generate image list (instant - no decoding)
+IMAGE_LIST=$(generate_image_list)
+
+if [[ -z "$IMAGE_LIST" ]]; then
+    echo "No images in clipboard history"
+    read -p "Press Enter to exit..."
+    exit 0
+fi
+
+# Create a temporary lookup file for fzf to access full lines
+LOOKUP_FILE="$WORK_DIR/lookup.txt"
+echo "$IMAGE_LIST" > "$LOOKUP_FILE"
+
+# fzf with ueberzug++ preview using helper scripts
+# {} contains the displayed text (field 2), use it to grep the full line
+selected=$(echo "$IMAGE_LIST" | fzf \
+    --with-nth=2 \
+    --delimiter=$'\t' \
+    --bind="enter:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER copy @)+accept" \
+    --bind="ctrl-c:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER copy @)+accept" \
+    --bind="ctrl-d:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER delete @)+reload(bash -c 'export DISPLAY=:0 WORK_DIR=$WORK_DIR; counter=1; cliphist list | grep -a \"\[\[.*binary data.*\]\]\\\$\" | while IFS=\$\"\\t\" read -r id preview; do numeric_id=\$(echo \"\$id\" | awk \"{print \\\$1}\"); img_file=\"\$WORK_DIR/\${numeric_id}.png\"; dimensions=\$(echo \"\$preview\" | grep -oP \"\\d+x\\d+\" || echo \"unknown\"); size=\$(echo \"\$preview\" | grep -oP \"\\d+(\\.\\d+)?\\s+(B|KiB|MiB|GiB)\" || echo \"?\"); display_name=\$(printf \"#%-3d · %-10s · %-8s\" \"\$counter\" \"\$dimensions\" \"\$size\"); if [[ \"\$dimensions\" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)\$ ]]; then display_name+=\" · screenshot\"; elif [[ \"\$size\" =~ ^[0-9]+\\s+(B|KiB)\$ ]] && [[ ! \"\$size\" =~ ^[5-9][0-9]{2,}\\s+KiB\$ ]]; then display_name+=\" · graphic\"; elif [[ \"\$size\" =~ MiB|GiB ]]; then display_name+=\" · photo\"; fi; printf \"%s\\t%s\\t%s\\t%s\\n\" \"\$numeric_id\" \"\$display_name\" \"\$preview\" \"\$img_file\"; ((counter++)); done | tee $LOOKUP_FILE')" \
+    --bind="ctrl-g:become(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER gimp @)" \
+    --style full \
+    --reverse \
+    --preview-border \
+    --preview-label='[enter/*c*opy  *d*elete  *g*imp]' \
+    --header='Clipboard Image History' \
+    --preview="grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $PREVIEW_WRAPPER @ $SOCKET" || true)
+
+# Show final notification only if something was selected
+if [[ -n "$selected" ]]; then
+    notify-send -u low "Clipboard" "Image copied to clipboard" 2>/dev/null || true
+fi

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Preview wrapper for cliphist images
+# Decodes image on-demand and shows with ueberzug
+
+line="$1"
+socket="$2"
+
+# Extract fields (id, display_name, original_preview, imgfile)
+IFS=$'\t' read -r id display_name original_preview imgfile <<< "$line"
+
+# Decode image if it doesn't exist yet
+if [[ ! -f "$imgfile" ]]; then
+    cliphist decode "$id" > "$imgfile" 2>/dev/null || exit 1
+fi
+
+# Show image with ueberzug
+ueberzugpp cmd -s "$socket" -i fzfpreview -a add \
+    -x "$FZF_PREVIEW_LEFT" -y "$FZF_PREVIEW_TOP" \
+    --max-width "$FZF_PREVIEW_COLUMNS" --max-height "$FZF_PREVIEW_LINES" \
+    -f "$imgfile" 2>/dev/null

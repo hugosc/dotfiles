@@ -1,15 +1,48 @@
 #!/usr/bin/env bash
+# Cliphist simple dmenu picker for X11
+# Optimized for performance
 
-# Simple clipboard history menu using dmenu (centered, vertical list)
 export DISPLAY="${DISPLAY:-:0}"
 
-# Get colors from Xresources
-DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
+# Cache dmenu colors to avoid repeated calls
+if [[ -z "$DMENU_COLORS" ]]; then
+    DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
+fi
 
-choice=$(printf "Text\nImages" | dmenu $DMENU_COLORS -c -l 2 -p "Clipboard:" -i -fn "monospace:size=10")
+# Get full list once (this is the slowest operation ~1.6s for 750 items)
+full_list=$(cliphist list 2>/dev/null)
+
+# Fast filtering with grep
+image_list=$(echo "$full_list" | grep -a "\[\[.*binary data.*\]\]")
+text_list=$(echo "$full_list" | grep -av "\[\[.*binary data.*\]\]")
+
+# Show choice menu if we have both text and images
+if [[ -n "$text_list" ]] && [[ -n "$image_list" ]]; then
+    choice=$(printf "Text\nImages" | dmenu $DMENU_COLORS -c -l 2 -p "Clipboard:" -i -fn "Iosevka Nerd Font:size=10")
+else
+    # If only one type exists, skip the menu
+    choice=$([[ -n "$image_list" ]] && echo "Images" || echo "Text")
+fi
 
 case "$choice" in
-	Text) txtcliphist sel ;;
-	Images) imgcliphist sel ;;
-	*) exit 1 ;;
+    Text)
+        selection=$(echo "$text_list" | dmenu $DMENU_COLORS -c -l 20 -i -p "Text:" -fn "Iosevka Nerd Font:size=10")
+        if [[ -n "$selection" ]]; then
+            # Fast copy with xclip
+            echo "$selection" | cliphist decode | xclip -selection clipboard 2>/dev/null
+        fi
+        ;;
+    Images)
+        # Launch fzf+ueberzug++ preview in st (optimized geometry)
+        read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+        TERM_W=$((160 * 8))
+        TERM_H=$((25 * 14))
+        OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
+        OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
+        
+        # Optimized st launch: removed sh wrapper, direct exec
+        st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf \
+           -g "160x25+${OFFSET_X}+${OFFSET_Y}" \
+           -e bash -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec ~/.config/scripts/shortcuts-menus/cliphist-images-preview' &
+        ;;
 esac
