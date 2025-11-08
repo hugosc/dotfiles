@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# playerctl-loop ensures that when a track is skipped in the music player itself, it still updates on bar
+pidof -x playerctl-loop >/dev/null 2>&1 || playerctl-loop >/dev/null 2>&1 &
+
 # format state to alternate between artist - title and album - title
 FORMAT_FILE="/tmp/dwmblocks_mus_format"
 [ ! -f "$FORMAT_FILE" ] && echo "0" > "$FORMAT_FILE"
