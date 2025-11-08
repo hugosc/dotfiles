@@ -45,6 +45,9 @@ start_recording() {
 	# Create flag file to indicate recording is active
 	touch "$REC_FLAG"
 	
+	# Save output path for later use
+	echo "$output" > "${REC_FLAG}.output"
+	
 	# Start ffmpeg recording in background
 	# Uses h264 codec, 30fps, medium quality + mic audio
 	ffmpeg -f x11grab \
@@ -84,13 +87,21 @@ stop_recording() {
 		wait "$pid" 2>/dev/null
 	fi
 	
+	# Get the output file path
+	output=$(cat "${REC_FLAG}.output" 2>/dev/null)
+	
 	# Remove flag files
-	rm -f "$REC_FLAG" "${REC_FLAG}.pid" "$REC_GEOMETRY"
+	rm -f "$REC_FLAG" "${REC_FLAG}.pid" "${REC_FLAG}.output" "$REC_GEOMETRY"
 	
 	# Give time for file to be written
 	sleep 1
 	
-	notify-send --urgency=normal "Recording stopped" "File saved to ${REC_DIR}"
+	# Copy file path to clipboard
+	if [[ -n "$output" ]]; then
+		echo "$output" | xclip -selection clipboard
+	fi
+	
+	notify-send --urgency=normal "Recording stopped" "Path copied to clipboard"
 }
 
 status() {
