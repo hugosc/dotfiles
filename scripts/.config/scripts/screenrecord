@@ -66,8 +66,6 @@ start_recording() {
 	
 	# Save the PID for stopping later
 	echo $! > "${REC_FLAG}.pid"
-	
-	notify-send --urgency=normal "Recording started" "Saving to $output"
 }
 
 stop_recording() {
@@ -99,9 +97,9 @@ stop_recording() {
 	# Copy file path to clipboard
 	if [[ -n "$output" ]]; then
 		echo "$output" | xclip -selection clipboard
+		filename=$(basename "$output")
+		notify-send --urgency=normal "Recording stopped" "$filename"
 	fi
-	
-	notify-send --urgency=normal "Recording stopped" "Path copied to clipboard"
 }
 
 status() {
