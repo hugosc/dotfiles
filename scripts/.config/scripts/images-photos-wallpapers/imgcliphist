@@ -18,6 +18,8 @@ sel() {
 		# Single image: Press 'Q' to select current image and quit
 		# Multiple images: Press 'm' to mark, then 'q' to quit
 		selected=$(nsxiv -otb "$hist"/*)
+		# nsxiv outputs full paths, so extract just the filename
+		[[ -n "$selected" ]] && selected=$(basename "$selected")
 	else
 		# Fallback to dmenu if nsxiv is not installed
 		DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
