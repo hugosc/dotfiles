@@ -1,54 +1,34 @@
 #!/bin/bash
 # Toggle picom window transparency for kitty terminals
 # Toggles between 100% (opaque) and 85% (transparent)
-# Uses xprop to modify individual window properties instead of reloading picom
-# This prevents flickering on other windows
-
-STATE_FILE="$HOME/.cache/kitty_opacity_state"
 
 # Check if picom is running
 if ! pgrep -x "picom" >/dev/null; then
   exit 1
 fi
 
-# Determine current opacity state
-if [ -f "$STATE_FILE" ]; then
-  current_opacity=$(cat "$STATE_FILE")
-else
-  current_opacity="85"
+# Get first kitty window to check current state
+first_window=$(xdotool search --class "kitty" 2>/dev/null | head -1)
+
+if [ -z "$first_window" ]; then
+  exit 1
 fi
 
-# Toggle opacity
-if [ "$current_opacity" = "100" ]; then
-  new_opacity="85"
+# Check current opacity
+current_opacity=$(xprop -id "$first_window" _NET_WM_WINDOW_OPACITY 2>/dev/null | grep -oE '[0-9]+$')
+
+if [ -z "$current_opacity" ]; then
+  opacity_uint32=$((85 * 42949672))
 else
-  new_opacity="100"
-fi
-
-# Convert opacity percentage to uint32 value for _NET_WM_WINDOW_OPACITY property
-# Formula: (percentage / 100) * 4294967295
-# Using pure bash arithmetic instead of bc for faster execution
-opacity_uint32=$((new_opacity * 42949672))
-
-# Update state file for next run
-mkdir -p "$HOME/.cache"
-echo "$new_opacity" > "$STATE_FILE"
-
-# Apply opacity to all kitty windows directly using xprop in parallel
-# This avoids reloading picom and only affects kitty windows
-# The _NET_WM_WINDOW_OPACITY property expects a uint32 value between 0 and 4294967295 (2^32-1)
-# Running updates in parallel (with & and wait) is faster than sequential updates
-
-xdotool search --class "kitty" 2>/dev/null | while IFS= read -r window_id; do
-  if [ -n "$window_id" ]; then
-    xprop -id "$window_id" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY "$opacity_uint32" 2>/dev/null &
+  # Toggle: if high (opaque ~3865470976), make transparent; otherwise make opaque
+  if [ "$current_opacity" -gt 3865470976 ]; then
+    opacity_uint32=$((85 * 42949672))
+  else
+    opacity_uint32=$((100 * 42949672))
   fi
+fi
+
+# Apply to all kitty windows
+xdotool search --class "kitty" 2>/dev/null | while read window_id; do
+  xprop -id "$window_id" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY "$opacity_uint32" 2>/dev/null
 done
-
-# Wait for all background xprop processes to complete
-wait
-
-# Note: We intentionally do NOT call pkill -SIGUSR1 picom
-# Using xprop directly on windows prevents flickering of other windows
-# and is much more efficient than reloading the entire picom configuration
-# Removed config file updates since they're unnecessary with direct xprop manipulation

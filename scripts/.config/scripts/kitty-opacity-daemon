@@ -1,0 +1,31 @@
+#!/bin/bash
+# Daemon that watches for new kitty windows and applies stored opacity state
+# Should be started in .xinitrc or similar
+
+STATE_FILE="$HOME/.cache/kitty_opacity_state"
+
+# Initialize state file if it doesn't exist
+mkdir -p "$HOME/.cache"
+[ -f "$STATE_FILE" ] || echo "100" > "$STATE_FILE"
+
+# Watch for new windows using xdotool
+xdotool behave_screen_edge --clear top-left
+while true; do
+  # Get all current kitty windows
+  current_windows=$(xdotool search --class "kitty" 2>/dev/null)
+  
+  # Check each window
+  for window_id in $current_windows; do
+    # Check if window already has opacity set
+    current_opacity=$(xprop -id "$window_id" _NET_WM_WINDOW_OPACITY 2>/dev/null)
+    
+    # If no opacity property, apply the stored state
+    if [ -z "$current_opacity" ]; then
+      stored_opacity=$(cat "$STATE_FILE" 2>/dev/null || echo "100")
+      opacity_uint32=$((stored_opacity * 42949672))
+      xprop -id "$window_id" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY "$opacity_uint32" 2>/dev/null
+    fi
+  done
+  
+  sleep 0.5
+done
