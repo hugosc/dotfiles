@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# Weather script for dwmblocks using wttr.in
+# Caches result for 5 minutes to avoid excessive API calls
+
+CACHE_FILE="/tmp/dwmblocks_weather_cache"
+CACHE_AGE=300  # 5 minutes in seconds
+
+# Check if cache exists and is fresh
+if [ -f "$CACHE_FILE" ]; then
+    CURRENT_TIME=$(date +%s)
+    FILE_TIME=$(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0)
+    AGE=$((CURRENT_TIME - FILE_TIME))
+    
+    if [ $AGE -lt $CACHE_AGE ]; then
+        cat "$CACHE_FILE"
+        exit 0
+    fi
+fi
+
+# Fetch weather data - temp and condition
+TEMP=$(timeout 3 curl -s "https://wttr.in/?format=%t" 2>/dev/null)
+CONDITION=$(timeout 3 curl -s "https://wttr.in/?format=%C" 2>/dev/null)
+
+if [ -z "$TEMP" ] || [ -z "$CONDITION" ]; then
+    echo "?"
+    exit 0
+fi
+
+# Remove + sign from temperature
+TEMP=$(echo "$TEMP" | sed 's/+//')
+
+PARSED="$TEMP $CONDITION"
+
+# Cache the result
+echo "$PARSED" > "$CACHE_FILE" 2>/dev/null
+
+echo "$PARSED"
+
+case $BLOCK_BUTTON in
+    1) setsid -f "$TERMINAL" -e "curl -s https://wttr.in/ | less -R" ;;
+esac

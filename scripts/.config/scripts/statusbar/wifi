@@ -9,14 +9,16 @@ if command -v nmcli >/dev/null 2>&1; then
 		exit 0
 	fi
 	
-	# Get SSID and signal strength
+	# Get SSID and signal strength - use single nmcli call for efficiency
 	SSID=$(nmcli -t -f name c show --active 2>/dev/null | head -1)
-	SIGNAL=$(nmcli -t -f signal dev wifi 2>/dev/null | head -1)
 	
 	if [ -z "$SSID" ]; then
 		echo "󰤭"
 		exit 0
 	fi
+	
+	# Only query signal if SSID exists
+	SIGNAL=$(nmcli -t -f signal dev wifi list --rescan no 2>/dev/null | head -1)
 	
 	# Determine wifi icon based on signal strength
 	if [ -n "$SIGNAL" ]; then
@@ -43,9 +45,10 @@ else
 		exit 0
 	fi
 	
-	# Check connection status
-	SSID=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null | grep "SSID:" | awk '{print $NF}')
-	SIGNAL=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null | grep "signal:" | awk '{print $2}' | sed 's/,//')
+	# Check connection status - single iw call
+	IW_OUTPUT=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null)
+	SSID=$(echo "$IW_OUTPUT" | grep "SSID:" | awk '{print $NF}')
+	SIGNAL=$(echo "$IW_OUTPUT" | grep "signal:" | awk '{print $2}' | sed 's/,//')
 	
 	if [ -z "$SSID" ]; then
 		echo "󰤭"

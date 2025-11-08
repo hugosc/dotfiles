@@ -1,0 +1,7 @@
+#!/bin/sh
+# Get statusbar color from X resources (uses inactive tag color)
+# Falls back to hardcoded color if X resources unavailable
+
+COLOR=$(xrdb -query 2>/dev/null | grep "selbordercolor" | awk '{print $NF}')
+[ -z "$COLOR" ] && COLOR="#a3be8c"  # fallback
+echo "$COLOR"
