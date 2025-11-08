@@ -71,6 +71,9 @@ start_recording() {
 	
 	# Save the PID for stopping later
 	echo $! > "${REC_FLAG}.pid"
+	
+	# Signal dwmblocks to update (signal 12 for screenrecord block)
+	pkill -RTMIN+2 dwmblocks
 }
 
 stop_recording() {
@@ -112,6 +115,9 @@ stop_recording() {
 	# Give time for file to be written
 	sleep 1
 	
+	# Signal dwmblocks to update (signal 12 for screenrecord block)
+	pkill -RTMIN+2 dwmblocks
+	
 	# Copy file URI to clipboard like file managers do (text/uri-list format)
 	# This allows pasting into Discord as if drag-dropping from a file manager
 	if [[ -n "$output" && -f "$output" ]]; then
@@ -125,7 +131,7 @@ stop_recording() {
 status() {
 	if is_recording; then
 		# Show recording indicator
-		echo "🔴"
+		echo "●"
 	else
 		# Return empty for dwmblocks when not recording
 		return 1
