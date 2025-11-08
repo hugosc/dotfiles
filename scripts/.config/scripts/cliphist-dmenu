@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Cliphist dmenu wrapper for X11
+
+export DISPLAY="${DISPLAY:-:0}"
+
+# Get dmenu colors (or use defaults)
+if [ -f ~/.config/scripts/helpers/dmenu-colors ]; then
+    DMENU_COLORS=$(/home/croc/.config/scripts/helpers/dmenu-colors)
+else
+    DMENU_COLORS="-nb #2e3440 -nf #d8dee9 -sb #a3be8c -sf #2e3440"
+fi
+
+# Get selection from cliphist list via dmenu
+selection=$(cliphist list | dmenu $DMENU_COLORS -c -l 20 -i -p "Clipboard:" -fn "Iosevka Nerd Font:size=10")
+
+# If user selected something, decode it and copy to clipboard
+if [ -n "$selection" ]; then
+    # Extract the ID (first column)
+    id=$(echo "$selection" | awk '{print $1}')
+    # Decode and pipe to xclip
+    cliphist decode "$id" | xclip -selection clipboard
+fi
