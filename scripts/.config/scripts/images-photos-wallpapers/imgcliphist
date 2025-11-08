@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export DISPLAY="${DISPLAY:-:0}"
+
 hist=~/.cache/hist
 
 add() {
@@ -13,6 +15,7 @@ sel() {
 	
 	if command -v nsxiv >/dev/null; then
 		# Use nsxiv for nice image preview
+		# Press 'q' or 'Q' to select, Enter to open image
 		selected=$(nsxiv -otb "$hist"/*)
 	else
 		# Fallback to dmenu if nsxiv is not installed
@@ -28,5 +31,5 @@ sel() {
 case "$1" in
 	add*) add "$@" ;;
 	sel*) sel "$@" ;;
-	*) printf "$0 | file: $hist\n\nadd - add image from clipboard to history\nsel - select image from history\n" ; exit 0 ;;
+	*) printf "$0 | file: $hist\n\nadd - add image from clipboard to history\nsel - select image from history (press 'q' in nsxiv to select)\n" ; exit 0 ;;
 esac

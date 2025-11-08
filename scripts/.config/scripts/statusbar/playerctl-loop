@@ -5,8 +5,11 @@
 
 STATUSBAR="${STATUSBAR:-dwmblocks}"
 
+# Watch ncspot, mpd, chromium, and mpv players (same priority as musicplaying script)
+PLAYERS="${MUSIC_PLAYING_PLAYERS:-ncspot,chromium,mpd,mpv}"
+
 # Use playerctl --follow to block and wait for metadata changes
 # Then signal dwmblocks when they occur
-playerctl metadata --follow --format '{{ artist }} - {{ title }}' 2>/dev/null | while read -r metadata; do
+playerctl metadata --all-players --follow --format '{{ artist }} - {{ title }}' 2>/dev/null | while read -r metadata; do
 	pkill -RTMIN+11 "$STATUSBAR" 2>/dev/null
 done

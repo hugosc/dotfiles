@@ -6,7 +6,18 @@ export DISPLAY="${DISPLAY:-:0}"
 for cmd in xclip import; do command -v "$cmd" &>/dev/null || { echo "Missing: $cmd" >&2; exit 1; }; done
 
 OUTDIR="${2:-$HOME/Pictures}"; mkdir -p "$OUTDIR"
-FILE="$OUTDIR/$(date +%Y%m%d_%H%M%S).png"
+
+# Get window title for naming
+get_window_title() {
+	command -v xdotool &>/dev/null || { echo "screenshot"; return; }
+	local title=$(xdotool getactivewindow getwindowname 2>/dev/null || echo "screenshot")
+	# Sanitize title: remove special chars, limit length, convert spaces to underscores
+	echo "$title" | sed 's/[^a-zA-Z0-9._-]/_/g' | sed 's/__*/_/g' | cut -c1-30
+}
+
+WINDOW_TITLE=$(get_window_title)
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+FILE="$OUTDIR/${WINDOW_TITLE}_${TIMESTAMP}.png"
 TMP=$(mktemp --suffix=.png); trap 'rm -f "$TMP"' EXIT
 
 show_help(){ 
@@ -22,19 +33,19 @@ EOF
 }
 
 post(){ 
-    [[ "${WATERMARK:-}" == "1" ]] && { 
-        command -v magick &>/dev/null || { echo "Missing: magick" >&2; exit 1; }
-        # Watermark subsystem (env overrides supported)
-        magick "$FILE" \
-            -gravity "${WATERMARK_POS:-southeast}" \
-            -pointsize "${WATERMARK_SIZE:-28}" \
-            -fill white -undercolor "${WATERMARK_BG:-#00000080}" \
-            -annotate +20+20 "${WATERMARK_TEXT:-$(date '+%Y-%m-%d %H:%M')}" \
-            "$FILE"
-    }
-    xclip -selection clipboard -t image/png -i "$FILE" && command -v notify-send &>/dev/null && notify-send -i "$FILE" "Screenshot: $(basename "$FILE")" 2>/dev/null || true
-    command -v imgcliphist && imgcliphist add
-}
+     [[ "${WATERMARK:-}" == "1" ]] && { 
+         command -v magick &>/dev/null || { echo "Missing: magick" >&2; exit 1; }
+         # Watermark subsystem (env overrides supported)
+         magick "$FILE" \
+             -gravity "${WATERMARK_POS:-southeast}" \
+             -pointsize "${WATERMARK_SIZE:-28}" \
+             -fill white -undercolor "${WATERMARK_BG:-#00000080}" \
+             -annotate +20+20 "${WATERMARK_TEXT:-$(date '+%Y-%m-%d %H:%M')}" \
+             "$FILE"
+     }
+     xclip -selection clipboard -t image/png -i "$FILE" && command -v notify-send &>/dev/null && notify-send --urgency=low -i "$FILE" "Screenshot: $(basename "$FILE")" 2>/dev/null || true
+     command -v imgcliphist && imgcliphist add
+ }
 
 colorpicker(){ 
     command -v magick &>/dev/null || { command -v notify-send &>/dev/null && notify-send "Missing: magick" 2>/dev/null || echo "Missing: magick"; exit 1; }

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# pywal colorscheme hook - runs after wal generates colors
+
+# Link Xresources 
+ln -sf ~/.cache/wal/colors.Xresources ~/.Xresources
+
+# Combine all Xresources and load with single command
+cat ~/.cache/wal/colors.Xresources > /tmp/xresources_combined.tmp
+[ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra >> /tmp/xresources_combined.tmp
+[ -f ~/.cache/wal/dmenu ] && cat ~/.cache/wal/dmenu >> /tmp/xresources_combined.tmp
+xrdb -load /tmp/xresources_combined.tmp
+
+# Trigger DWM xrdb reload via keybind (Super+Ctrl+Backslash)
+xdotool key super+ctrl+backslash
+
+# Reload kitty colors if it's running
+if command -v kitty >/dev/null; then
+    kitty @ set-colors --all ~/.cache/wal/colors-kitty.conf 2>/dev/null
+fi
+
+# Refresh dwmblocks status bar (block 8 for color/theme updates)
+pkill -RTMIN+8 dwmblocks 2>/dev/null || true
