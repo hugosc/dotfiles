@@ -32,3 +32,6 @@ fastfetch/.config/fastfetch/*.jpg
 
 # Backup files
 *.bak
+vesktop/.config/vesktop/sessionData
+vesktop/.config/vesktop/SingletonCookie
+vesktop/.config/vesktop/state.json
