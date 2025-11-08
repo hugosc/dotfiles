@@ -43,12 +43,14 @@ if [ $FOUND_PLAYING -eq 0 ]; then
 	NCSPOT_INSTANCE=$(timeout 0.5 playerctl --list-all 2>/dev/null | grep ncspot | head -1)
 	if [ -n "$NCSPOT_INSTANCE" ]; then
 		OUTPUT=$(timeout 0.5 playerctl metadata --player "$NCSPOT_INSTANCE" --format "$META" 2>/dev/null)
-		if [ -n "$OUTPUT" ]; then
+		# Only show if output is not empty and not just "?"
+		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && [ "$OUTPUT" != " - " ]; then
 			echo "$OUTPUT"
 		fi
 	else
 		OUTPUT=$(timeout 0.5 playerctl metadata --player mpd --format "$META" 2>/dev/null)
-		if [ -n "$OUTPUT" ]; then
+		# Only show if output is not empty and not just "?"
+		if [ -n "$OUTPUT" ] && [ "$OUTPUT" != "?" ] && [ "$OUTPUT" != " - " ]; then
 			echo "$OUTPUT"
 		fi
 	fi
