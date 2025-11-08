@@ -64,8 +64,13 @@ link() {
 
 
 sel() { # select from clip history and re-copy to clipboard
-		[[ -z $2 ]] && FOLDER=$HIST || FOLDER=$2
-		st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "105x12-100+270" -e fzfub $FOLDER c --tac
+	[[ -z $2 ]] && FOLDER=$HIST || FOLDER=$2
+	# Reload pywal colors into xrdb before launching
+	[ -f ~/.cache/wal/colors.Xresources ] && xrdb -merge ~/.cache/wal/colors.Xresources
+	[ -f ~/.cache/wal/xrdb_extra ] && xrdb -merge ~/.cache/wal/xrdb_extra
+	# Source and export FZF colors
+	[ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
+	st -f 'Liberation Mono:pixelsize=27' -c fzfmenu -n fzfmenu -T fzf -g "105x12-100+270" -e fzfub $FOLDER c --tac
 }
 
 copy() { # my fzfub script has ctrl-c and enter bound to copy

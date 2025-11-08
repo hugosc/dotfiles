@@ -1,0 +1,7 @@
+! Extended Xresources colors - DWM configuration
+dwm.normbordercolor: {color0}
+dwm.normbgcolor: {color0}
+dwm.normfgcolor: {color4}
+dwm.selbordercolor: {color8}
+dwm.selbgcolor: {color4}
+dwm.selfgcolor: {color0}

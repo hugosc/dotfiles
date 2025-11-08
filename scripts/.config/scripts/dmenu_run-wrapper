@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# dmenu_run wrapper that applies DWM colors (matching Super+P)
+
+# Read colors from Xresources
+normbgcolor=$(xrdb -query | grep '^dmenu\.normbg:' | awk '{print $NF}')
+normfgcolor=$(xrdb -query | grep '^dmenu\.normfg:' | awk '{print $NF}')
+selbgcolor=$(xrdb -query | grep '^dmenu\.selbg:' | awk '{print $NF}')
+selfgcolor=$(xrdb -query | grep '^dmenu\.selfg:' | awk '{print $NF}')
+
+# Fallback to default colors if Xresources not found
+: ${normbgcolor:="#2e3440"}
+: ${normfgcolor:="#d8dee9"}
+: ${selbgcolor:="#a3be8c"}
+: ${selfgcolor:="#eceff4"}
+
+# Get monitor from argument if provided
+monitor=""
+if [ "$1" = "-m" ] && [ -n "$2" ]; then
+    monitor="-m $2"
+    shift 2
+fi
+
+# Pass through remaining arguments with DWM colors
+# -nb: normal background (normbgcolor)
+# -nf: normal foreground (normfgcolor)
+# -sb: selected background (selbgcolor)
+# -sf: selected foreground (selfgcolor)
+exec dmenu_run \
+    $monitor \
+    -nb "$normbgcolor" \
+    -nf "$normfgcolor" \
+    -sb "$selbgcolor" \
+    -sf "$selfgcolor" \
+    "$@"

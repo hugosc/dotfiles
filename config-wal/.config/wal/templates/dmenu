@@ -1,0 +1,5 @@
+! dmenu colors - using dwm color scheme for uniformity
+dmenu.normbg: {color0}
+dmenu.normfg: {color4}
+dmenu.selbg: {color4}
+dmenu.selfg: {color0}

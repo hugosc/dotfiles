@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Simple clipboard history menu using dmenu (centered, vertical list)
+export DISPLAY="${DISPLAY:-:0}"
+
+# Get colors from Xresources
+DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
+
+choice=$(printf "Text\nImages" | dmenu $DMENU_COLORS -c -l 2 -p "Clipboard:" -i -fn "monospace:size=10")
+
+case "$choice" in
+	Text) txtcliphist sel ;;
+	Images) imgcliphist sel ;;
+	*) exit 1 ;;
+esac

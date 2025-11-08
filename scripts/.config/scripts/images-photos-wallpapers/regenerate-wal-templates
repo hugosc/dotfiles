@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Regenerate wal templates from the current colors.json (after darkening)"""
+
+import json
+from pathlib import Path
+
+def main():
+    cache_dir = Path.home() / ".cache/wal"
+    templates_dir = Path.home() / ".config/wal/templates"
+    colors_json = cache_dir / "colors.json"
+    
+    # Load colors
+    with open(colors_json) as f:
+        data = json.load(f)
+    
+    colors = data['colors']
+    special = data.get('special', {})
+    wallpaper = data.get('wallpaper', '')
+    
+    # Process each template
+    for template_file in templates_dir.glob("*"):
+        if template_file.is_file():
+            with open(template_file) as f:
+                content = f.read()
+            
+            # Replace color variables
+            for key, value in colors.items():
+                content = content.replace(f"{{{key}}}", value)
+            
+            # Replace special variables
+            for key, value in special.items():
+                content = content.replace(f"{{{key}}}", value)
+            
+            # Replace wallpaper
+            content = content.replace("{wallpaper}", wallpaper)
+            
+            # Write output
+            output_file = cache_dir / template_file.name
+            with open(output_file, 'w') as f:
+                f.write(content)
+            
+            print(f"Generated {output_file.name}")
+
+if __name__ == "__main__":
+    main()

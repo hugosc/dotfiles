@@ -1,0 +1,18 @@
+#!/bin/bash
+# Extract colors from Xresources for dmenu
+# Uses the wal-generated colors from xrdb
+
+# Extract color values from xrdb (which includes xrdb_extra)
+NORMBG=$(xrdb -query | grep "^dwm\.normbgcolor:" | awk '{print $NF}')
+NORMFG=$(xrdb -query | grep "^dwm\.normfgcolor:" | awk '{print $NF}')
+SELBG=$(xrdb -query | grep "^dwm\.selbgcolor:" | awk '{print $NF}')
+SELFG=$(xrdb -query | grep "^dwm\.selfgcolor:" | awk '{print $NF}')
+
+# Fallback to hardcoded colors if not found
+: ${NORMBG:="#201d19"}
+: ${NORMFG:="#dddfe1"}
+: ${SELBG:="#918C8F"}
+: ${SELFG:="#dddfe1"}
+
+# Output as dmenu flags
+echo "-nb $NORMBG -nf $NORMFG -sb $SELBG -sf $SELFG"
