@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # dwmblocks status for screen recording
-# Shows "REC" when recording, empty otherwise (respects separators)
+# Shows black dot when recording, empty otherwise (respects separators)
 
 if ~/.config/scripts/screenrecord status >/dev/null 2>&1; then
-	echo "REC"
+	echo "●"
 fi
