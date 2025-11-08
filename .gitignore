@@ -35,3 +35,9 @@ fastfetch/.config/fastfetch/*.jpg
 vesktop/.config/vesktop/sessionData
 vesktop/.config/vesktop/SingletonCookie
 vesktop/.config/vesktop/state.json
+dwmblocks/AGENTS.md
+dwmblocks/LICENSE
+dwmblocks/dwmblocks
+dwmblocks/README.md
+dwmblocks/Makefile
+dwmblocks/dwmblocks.c.rej
