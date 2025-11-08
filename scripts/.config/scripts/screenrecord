@@ -94,9 +94,9 @@ stop_recording() {
 	# Give time for file to be written
 	sleep 1
 	
-	# Copy file to clipboard using xclip with proper MIME type
+	# Copy file to clipboard using xclip-copyfile (same way as file managers do it)
 	if [[ -n "$output" && -f "$output" ]]; then
-		xclip -selection clipboard -t video/mp4 -i "$output"
+		xclip-copyfile "$output"
 		filename=$(basename "$output")
 		notify-send --urgency=normal "Recording stopped" "$filename"
 	fi
