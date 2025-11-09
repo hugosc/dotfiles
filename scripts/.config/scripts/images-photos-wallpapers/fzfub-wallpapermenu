@@ -43,19 +43,19 @@ case "$#" in
   # Handle both theme and dark/light/medium mode
   if [[ "$2" == "light" ]]; then
     # Generate light colors, darken them slightly with optimized combined script
-    wal -i "$1" -l --backend colorz &&
+    wal -i "$1" -l &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
   elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
-    wal -i "$1" -l --backend colorz &&
-      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.35 0.40 &&
+    wal -i "$1" -l &&
+      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.25 0.0 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
   elif [[ "$2" == "dark" ]]; then
     # Generate dark colors - regenerate templates to ensure no darkened values remain
-    wal -i "$1" --backend colorz &&
+    wal -i "$1" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
       "$PW16SCRIPT"
