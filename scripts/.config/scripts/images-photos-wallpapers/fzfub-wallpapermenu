@@ -9,43 +9,60 @@ export DISPLAY=:0
 # first arg is wallpaper selection
 # second arg is optional theme or mode (dark/light)
 
-WPFOLDER=~/Pictures/wallpaper/ # wallpaper folder
-PW16SCRIPT=~/scripts/pywal16 # pywal16 post-run script
+WPFOLDER=~/Pictures/wallpaper/    # wallpaper folder
+PW16SCRIPT=~/scripts/pywal16      # pywal16 post-run script
 TEMPIMG=~/Pictures/wallpaper/temp # save as a temporary image for restoration on restart
 
 case "$#" in
-	0) 
-		# Reload pywal colors into xrdb before launching menu
-		[ -f ~/.cache/wal/colors.Xresources ] && xrdb -merge ~/.cache/wal/colors.Xresources
-		[ -f ~/.cache/wal/xrdb_extra ] && xrdb -merge ~/.cache/wal/xrdb_extra
-		[ -f ~/.cache/wal/st ] && xrdb -merge ~/.cache/wal/st
-		# Source and export FZF colors
-		[ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
-		# Launch st and apply sequences immediately, then run fzfub
-		# Center the window: get screen dimensions and calculate offset
-		read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
-		TERM_W=$((160 * 8))  # approximate width in pixels (chars * avg char width)
-		TERM_H=$((25 * 14))  # approximate height in pixels (lines * font size)
-		OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
-		OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
-		st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0 
-		;;
-	1) wal -i "$1" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1 ;;
-	2) 
-		# Handle both theme and dark/light mode
-		if [[ "$2" == "light" ]]; then
-			# Generate light colors, darken them, regenerate templates from darkened colors, then run post-scripts
-			wal -i "$1" -l && \
-			~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/darken-color0 && \
-			~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates && \
-			ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1
-			nohup "$PW16SCRIPT" >/dev/null 2>&1 &
-		elif [[ "$2" == "dark" ]]; then
-			wal -i "$1" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1
-		else
-			# Assume it's a theme name
-			wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" > /dev/null 2>&1
-		fi
-		;;
-	*) exit 0 ;;
+0)
+  # Load all Xresources at once for better performance
+  {
+    [ -f ~/.cache/wal/colors.Xresources ] && cat ~/.cache/wal/colors.Xresources
+    [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra
+    [ -f ~/.cache/wal/st ] && cat ~/.cache/wal/st
+  } | xrdb -merge
+  # Source and export FZF colors
+  [ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
+  # Launch st and apply sequences immediately, then run fzfub
+  # Center the window: get screen dimensions and calculate offset
+  read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+  TERM_W=$((160 * 8)) # approximate width in pixels (chars * avg char width)
+  TERM_H=$((25 * 14)) # approximate height in pixels (lines * font size)
+  OFFSET_X=$(((SCREEN_W - TERM_W) / 2))
+  OFFSET_Y=$(((SCREEN_H - TERM_H) / 2))
+  st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0
+  ;;
+1)
+  # Dark mode - default behavior when called with just wallpaper path
+  wal -i "$1" --backend colorz &&
+    ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+    "$PW16SCRIPT"
+  ;;
+2)
+  # Handle both theme and dark/light/medium mode
+  if [[ "$2" == "light" ]]; then
+    # Generate light colors, darken them slightly with optimized combined script
+    wal -i "$1" -l --backend colorz &&
+      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors &&
+      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+  elif [[ "$2" == "medium" ]]; then
+    # Generate light colors with much higher darkness and saturation
+    wal -i "$1" -l --backend colorz &&
+      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.35 0.40 &&
+      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+  elif [[ "$2" == "dark" ]]; then
+    # Generate dark colors - regenerate templates to ensure no darkened values remain
+    wal -i "$1" --backend colorz &&
+      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
+      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+      "$PW16SCRIPT"
+  else
+    # Assume it's a theme name
+    wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+  fi
+  ;;
+*) exit 0 ;;
 esac

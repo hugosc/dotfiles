@@ -1,0 +1,17 @@
+#!/bin/bash
+# Wrapper for dmenu that uses pywal/Xresources colors
+
+# Read colors from Xresources
+NB=$(xrdb -query | grep "dwm.normbgcolor" | awk '{print $2}')
+NF=$(xrdb -query | grep "dwm.normfgcolor" | awk '{print $2}')
+SB=$(xrdb -query | grep "dwm.selbgcolor" | awk '{print $2}')
+SF=$(xrdb -query | grep "dwm.selfgcolor" | awk '{print $2}')
+
+# Fallback to defaults if not set
+NB="${NB:-#2e3440}"
+NF="${NF:-#d8dee9}"
+SB="${SB:-#b48ead}"
+SF="${SF:-#eceff4}"
+
+# Run dmenu with pywal colors
+exec dmenu "$@" -nb "$NB" -nf "$NF" -sb "$SB" -sf "$SF"
