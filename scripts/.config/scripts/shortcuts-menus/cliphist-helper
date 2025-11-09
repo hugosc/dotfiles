@@ -8,36 +8,66 @@ line="$2"
 # Parse tab-delimited line: id<tab>display_name<tab>original_preview<tab>imgfile
 IFS=$'\t' read -r id display_name original_preview imgfile <<< "$line"
 
-case "$action" in
-    copy)
-        # Decode on-demand if file doesn't exist
-        if [[ ! -f "$imgfile" ]]; then
-            cliphist decode "$id" > "$imgfile" 2>/dev/null
-        fi
-        
-        # Copy from decoded file
-        if [[ -f "$imgfile" ]]; then
-            # Use nohup and disown to keep xclip running after script exits
-            nohup xclip -selection clipboard -t image/png -i "$imgfile" >/dev/null 2>&1 &
-            disown
-        fi
-        ;;
-    delete)
-        # cliphist delete expects the full line: "ID\toriginal_preview_text"
-        echo -e "${id}\t${original_preview}" | cliphist delete 2>/dev/null
-        ;;
-    gimp)
-        # Decode on-demand if file doesn't exist
-        if [[ ! -f "$imgfile" ]]; then
-            cliphist decode "$id" > "$imgfile" 2>/dev/null
-        fi
-        
-        if [[ -f "$imgfile" ]]; then
-            gimp "$imgfile" > /dev/null 2>&1 &
-        fi
-        ;;
-    preview)
-        # For ueberzug preview - outputs the file path
-        echo "$imgfile"
-        ;;
-esac
+# Check if this is a HIST: entry (from ~/.cache/hist/)
+if [[ "$id" == HIST:* ]]; then
+    # Strip HIST: prefix to get the actual file path
+    imgfile="${id#HIST:}"
+    
+    case "$action" in
+        copy)
+            # Copy from the hist file
+            if [[ -f "$imgfile" ]]; then
+                nohup xclip -selection clipboard -t image/png -i "$imgfile" >/dev/null 2>&1 &
+                disown
+            fi
+            ;;
+        delete)
+            # Delete from ~/.cache/hist/
+            rm -f "$imgfile" 2>/dev/null
+            ;;
+        gimp)
+            if [[ -f "$imgfile" ]]; then
+                gimp "$imgfile" > /dev/null 2>&1 &
+            fi
+            ;;
+        preview)
+            # For ueberzug preview - outputs the file path
+            echo "$imgfile"
+            ;;
+    esac
+else
+    # Standard cliphist entry
+    case "$action" in
+        copy)
+            # Decode on-demand if file doesn't exist
+            if [[ ! -f "$imgfile" ]]; then
+                cliphist decode "$id" > "$imgfile" 2>/dev/null
+            fi
+            
+            # Copy from decoded file
+            if [[ -f "$imgfile" ]]; then
+                # Use nohup and disown to keep xclip running after script exits
+                nohup xclip -selection clipboard -t image/png -i "$imgfile" >/dev/null 2>&1 &
+                disown
+            fi
+            ;;
+        delete)
+            # cliphist delete expects the full line: "ID\toriginal_preview_text"
+            echo -e "${id}\t${original_preview}" | cliphist delete 2>/dev/null
+            ;;
+        gimp)
+            # Decode on-demand if file doesn't exist
+            if [[ ! -f "$imgfile" ]]; then
+                cliphist decode "$id" > "$imgfile" 2>/dev/null
+            fi
+            
+            if [[ -f "$imgfile" ]]; then
+                gimp "$imgfile" > /dev/null 2>&1 &
+            fi
+            ;;
+        preview)
+            # For ueberzug preview - outputs the file path
+            echo "$imgfile"
+            ;;
+    esac
+fi

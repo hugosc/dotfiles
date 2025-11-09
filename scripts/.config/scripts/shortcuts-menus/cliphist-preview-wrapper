@@ -8,10 +8,19 @@ socket="$2"
 # Extract fields (id, display_name, original_preview, imgfile)
 IFS=$'\t' read -r id display_name original_preview imgfile <<< "$line"
 
-# Decode image if it doesn't exist yet
-if [[ ! -f "$imgfile" ]]; then
+# Check if this is a HIST: entry (from ~/.cache/hist/)
+if [[ "$id" == HIST:* ]]; then
+    # Strip HIST: prefix to get the actual file path
+    imgfile="${id#HIST:}"
+fi
+
+# Decode image if it doesn't exist yet (only for cliphist entries)
+if [[ "$id" != HIST:* ]] && [[ ! -f "$imgfile" ]]; then
     cliphist decode "$id" > "$imgfile" 2>/dev/null || exit 1
 fi
+
+# Verify the image file exists
+[[ -f "$imgfile" ]] || exit 1
 
 # Show image with ueberzug
 ueberzugpp cmd -s "$socket" -i fzfpreview -a add \

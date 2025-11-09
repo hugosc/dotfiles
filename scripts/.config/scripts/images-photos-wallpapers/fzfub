@@ -40,10 +40,11 @@ case $2 in
 				ILABEL="Image Editor (alt: jpg/png | ctrl: delete/exif/bw/watermark)"
 				LABEL="[*g*→gimp *t*ransparent *f*/*v*flip *l*black/*h*white border]" 
 				IMGFILTER='yes' ;;
-		*c) # cliphist options
-				ILABEL="Clipboard: enter/*c*opy"
-				LABEL="[*d*elete  *g*imp]"
-				FZFARGS='enter:execute(cliphist copy {}),ctrl-c:execute(cliphist copy {}),ctrl-d:execute(rm {} && notify-send {} deleted),ctrl-g:become(gimp {+} > /dev/null 2>&1)' ;;	
+	*c) # cliphist options
+			ILABEL="Clipboard: enter/*c*opy"
+			LABEL="[*d*elete  *g*imp]"
+			FZFARGS='enter:execute(cliphist copy {}),ctrl-c:execute(cliphist copy {}),ctrl-d:execute(rm {} && notify-send {} deleted),ctrl-g:become(gimp {+} > /dev/null 2>&1)'
+			IMGFILTER='yes' ;;	
 		*) FZFARGS='ctrl-d:execute(rm -i {} && notify-send {} deleted)' ;; # normal options
 esac
 

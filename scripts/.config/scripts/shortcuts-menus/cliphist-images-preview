@@ -8,7 +8,7 @@ HELPER="/home/croc/.config/scripts/shortcuts-menus/cliphist-helper"
 PREVIEW_WRAPPER="/home/croc/.config/scripts/shortcuts-menus/cliphist-preview-wrapper"
 
 # Check dependencies
-for cmd in cliphist ueberzugpp fzf xclip; do
+for cmd in ueberzugpp fzf xclip; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "Error: $cmd not found" >&2
         read -p "Press Enter to exit..."
@@ -22,11 +22,21 @@ case "$(uname -a)" in
     *) UEBERZUG_TMP_DIR="/tmp" ;;
 esac
 
+# Clean up stale ueberzugpp files (only if processes don't exist)
+for pidfile in "$UEBERZUG_TMP_DIR"/.*-*-*-*-*; do
+    [[ -f "$pidfile" ]] || continue
+    pid=$(cat "$pidfile" 2>/dev/null)
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$pidfile" "$UEBERZUG_TMP_DIR/ueberzugpp-$pid.socket" 2>/dev/null
+    fi
+done
+
 # Work directory for decoded images
 WORK_DIR=$(mktemp -d -t cliphist-preview.XXXXXX)
 
 cleanup() {
     [[ -n "${SOCKET:-}" ]] && ueberzugpp cmd -s "$SOCKET" -a exit 2>/dev/null || true
+    [[ -n "${UB_PID_FILE:-}" ]] && rm -f "$UB_PID_FILE" 2>/dev/null || true
     [[ -n "${WORK_DIR:-}" ]] && rm -rf "$WORK_DIR"
 }
 trap cleanup HUP INT QUIT TERM EXIT
@@ -42,36 +52,40 @@ if [[ -z "$UB_PID" ]]; then
 fi
 export SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
 
-# Generate image list without decoding upfront
-# Format: cliphist ID<tab>display_name<tab>original_preview<tab>file_path
+# Generate image list from ~/.cache/hist/
+# Format: filepath<tab>display_name<tab>original_preview<tab>file_path
 generate_image_list() {
     local counter=1
-    cliphist list | grep -a "\[\[.*binary data.*\]\]$" | while IFS=$'\t' read -r id preview; do
-        # Extract just the numeric ID from the line
-        numeric_id=$(echo "$id" | awk '{print $1}')
-        img_file="$WORK_DIR/${numeric_id}.png"
-        
-        # Extract dimensions and size from the preview (no decoding yet!)
-        dimensions=$(echo "$preview" | grep -oP '\d+x\d+' || echo "unknown")
-        size=$(echo "$preview" | grep -oP '\d+(\.\d+)?\s+(B|KiB|MiB|GiB)' || echo "?")
-        
-        # Create a more descriptive name
-        # Format: "#N · WxH · SIZE · TYPE"
-        display_name=$(printf "#%-3d · %-10s · %-8s" "$counter" "$dimensions" "$size")
-        
-        # Add type hints based on properties (fast checks only)
-        if [[ "$dimensions" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)$ ]]; then
-            display_name+=" · screenshot"
-        elif [[ "$size" =~ ^[0-9]+\s+(B|KiB)$ ]] && [[ ! "$size" =~ ^[5-9][0-9]{2,}\s+KiB$ ]]; then
-            # Small size (< 500 KiB) likely a graphic/icon
-            display_name+=" · graphic"
-        elif [[ "$size" =~ MiB|GiB ]]; then
-            display_name+=" · photo"
+    
+    HIST_DIR=~/.cache/hist
+    if [[ ! -d "$HIST_DIR" ]]; then
+        return
+    fi
+    
+    find "$HIST_DIR" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) -printf "%T@ %p\n" 2>/dev/null | \
+    sort -rn | cut -d' ' -f2- | while read -r img_path; do
+        if [[ -f "$img_path" ]]; then
+            # Get image info
+            img_info=$(file "$img_path" 2>/dev/null | grep -oP '\d+\s*x\s*\d+' | tr -d ' ' || echo "unknown")
+            img_size=$(du -h "$img_path" 2>/dev/null | cut -f1 || echo "?")
+            img_name=$(basename "$img_path")
+            
+            # Create display name - Format: "#N · WxH · SIZE"
+            display_name=$(printf "#%-3d · %-10s · %-8s" "$counter" "$img_info" "$img_size")
+            
+            # Add type hints based on properties
+            if [[ "$img_info" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)$ ]]; then
+                display_name+=" · screenshot"
+            elif [[ "$img_size" =~ ^[0-9]+K$ ]] && (( $(echo "$img_size" | grep -oP '\d+') < 500 )); then
+                display_name+=" · graphic"
+            elif [[ "$img_size" =~ M|G ]]; then
+                display_name+=" · photo"
+            fi
+            
+            # Output: filepath<tab>display_name<tab>original_preview<tab>file_path
+            printf "HIST:%s\t%s\t%s\t%s\n" "$img_path" "$display_name" "$img_name" "$img_path"
+            ((counter++))
         fi
-        
-        # Output: ID<tab>display_name<tab>original_preview<tab>file_path
-        printf "%s\t%s\t%s\t%s\n" "$numeric_id" "$display_name" "$preview" "$img_file"
-        ((counter++))
     done
 }
 
@@ -95,7 +109,7 @@ selected=$(echo "$IMAGE_LIST" | fzf \
     --delimiter=$'\t' \
     --bind="enter:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER copy @)+accept" \
     --bind="ctrl-c:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER copy @)+accept" \
-    --bind="ctrl-d:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER delete @)+reload(bash -c 'export DISPLAY=:0 WORK_DIR=$WORK_DIR; counter=1; cliphist list | grep -a \"\[\[.*binary data.*\]\]\\\$\" | while IFS=\$\"\\t\" read -r id preview; do numeric_id=\$(echo \"\$id\" | awk \"{print \\\$1}\"); img_file=\"\$WORK_DIR/\${numeric_id}.png\"; dimensions=\$(echo \"\$preview\" | grep -oP \"\\d+x\\d+\" || echo \"unknown\"); size=\$(echo \"\$preview\" | grep -oP \"\\d+(\\.\\d+)?\\s+(B|KiB|MiB|GiB)\" || echo \"?\"); display_name=\$(printf \"#%-3d · %-10s · %-8s\" \"\$counter\" \"\$dimensions\" \"\$size\"); if [[ \"\$dimensions\" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)\$ ]]; then display_name+=\" · screenshot\"; elif [[ \"\$size\" =~ ^[0-9]+\\s+(B|KiB)\$ ]] && [[ ! \"\$size\" =~ ^[5-9][0-9]{2,}\\s+KiB\$ ]]; then display_name+=\" · graphic\"; elif [[ \"\$size\" =~ MiB|GiB ]]; then display_name+=\" · photo\"; fi; printf \"%s\\t%s\\t%s\\t%s\\n\" \"\$numeric_id\" \"\$display_name\" \"\$preview\" \"\$img_file\"; ((counter++)); done | tee $LOOKUP_FILE')" \
+    --bind="ctrl-d:execute-silent(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER delete @)+reload(bash -c 'export DISPLAY=:0 WORK_DIR=$WORK_DIR; counter=1; HIST_DIR=~/.cache/hist; [[ -d \"\$HIST_DIR\" ]] && find \"\$HIST_DIR\" -type f \\( -iname \"*.png\" -o -iname \"*.jpg\" -o -iname \"*.jpeg\" \\) -printf \"%T@ %p\\n\" 2>/dev/null | sort -rn | cut -d\" \" -f2- | while read -r img_path; do [[ -f \"\$img_path\" ]] || continue; img_info=\$(file \"\$img_path\" 2>/dev/null | grep -oP \"\\d+\\s*x\\s*\\d+\" | tr -d \" \" || echo \"unknown\"); img_size=\$(du -h \"\$img_path\" 2>/dev/null | cut -f1 || echo \"?\"); img_name=\$(basename \"\$img_path\"); display_name=\$(printf \"#%-3d · %-10s · %-8s\" \"\$counter\" \"\$img_info\" \"\$img_size\"); [[ \"\$img_info\" =~ ^(1920x1080|2560x1440|3840x2160|1366x768|1280x720)\$ ]] && display_name+=\" · screenshot\"; [[ \"\$img_size\" =~ ^[0-9]+K\$ ]] && (( \$(echo \"\$img_size\" | grep -oP \"\\d+\") < 500 )) && display_name+=\" · graphic\"; [[ \"\$img_size\" =~ M|G ]] && display_name+=\" · photo\"; printf \"HIST:%s\\t%s\\t%s\\t%s\\n\" \"\$img_path\" \"\$display_name\" \"\$img_name\" \"\$img_path\"; ((counter++)); done | tee $LOOKUP_FILE')" \
     --bind="ctrl-g:become(grep -F {} $LOOKUP_FILE | head -1 | xargs -I@ $HELPER gimp @)" \
     --style full \
     --reverse \
@@ -108,3 +122,7 @@ selected=$(echo "$IMAGE_LIST" | fzf \
 if [[ -n "$selected" ]]; then
     notify-send -u low "Clipboard" "Image copied to clipboard" 2>/dev/null || true
 fi
+
+# Explicit cleanup
+cleanup
+exit 0

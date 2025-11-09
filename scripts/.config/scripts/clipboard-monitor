@@ -12,6 +12,10 @@ if ! command -v cliphist >/dev/null 2>&1; then
   exit 1
 fi
 
+# History directory for img-text-clipboard-history script
+HIST=~/.cache/hist
+mkdir -p "$HIST" 2>/dev/null || true
+
 # Track last store time and hash to prevent immediate duplicates
 last_store_time=0
 last_stored_hash=""
@@ -28,13 +32,16 @@ store_current_clipboard() {
     if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
       cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
       
-      # Skip if same hash and within 2 seconds of last store (prevents copy-loop)
-      if [[ "$cur_hash" == "$last_stored_hash" ]] && (( current_time - last_store_time < 2 )); then
+      # Skip if same hash (always check, not just within 2 seconds)
+      if [[ "$cur_hash" == "$last_stored_hash" ]]; then
         rm -f "$tmp"
         return
       fi
       
-      cliphist store <"$tmp" 2>/dev/null || true
+      # Store ONLY in ~/.cache/hist/
+      local hist_file="$HIST/$(date '+%a_%b%d%Y_%H%M%S').png"
+      cp "$tmp" "$hist_file" 2>/dev/null && notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
+      
       last_stored_hash="$cur_hash"
       last_store_time=$current_time
       rm -f "$tmp"
@@ -42,12 +49,12 @@ store_current_clipboard() {
       rm -f "$tmp"
     fi
   else
-    # Fallback to text
+    # Fallback to text - keep using cliphist for text
     if text=$(xclip -selection clipboard -o 2>/dev/null); then
       cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
       
-      # Skip if same hash and within 2 seconds of last store
-      if [[ "$cur_hash" == "$last_stored_hash" ]] && (( current_time - last_store_time < 2 )); then
+      # Skip if same hash (always check, not just within 2 seconds)
+      if [[ "$cur_hash" == "$last_stored_hash" ]]; then
         return
       fi
       
@@ -78,8 +85,12 @@ while true; do
     tmp=$(mktemp --suffix=.png)
     if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
       cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
-      if [[ "$cur_hash" != "$last_hash" || "$last_type" != "image" ]]; then
-        cliphist store <"$tmp" 2>/dev/null || true
+      # Skip if same hash (removed type check - hash is enough)
+      if [[ "$cur_hash" != "$last_hash" ]]; then
+        # Store ONLY in ~/.cache/hist/
+        hist_file="$HIST/$(date '+%a_%b%d%Y_%H%M%S').png"
+        cp "$tmp" "$hist_file" 2>/dev/null && notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
+        
         last_hash="$cur_hash"
         last_type="image"
       fi
@@ -89,7 +100,8 @@ while true; do
     # Text path
     if text=$(xclip -selection clipboard -o 2>/dev/null); then
       cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
-      if [[ "$cur_hash" != "$last_hash" || "$last_type" != "text" ]]; then
+      # Skip if same hash (removed type check - hash is enough)
+      if [[ "$cur_hash" != "$last_hash" ]]; then
         printf "%s" "$text" | cliphist store 2>/dev/null || true
         last_hash="$cur_hash"
         last_type="text"
