@@ -51,7 +51,7 @@ c.colors.messages.info.fg = fg
 c.colors.messages.error.bg = bg
 c.colors.messages.error.fg = fg
 
-c.colors.downloads.bar.bg = bg
+c.colors.downloads.bar.bg = c0
 c.colors.downloads.start.bg = c10
 c.colors.downloads.stop.bg = c8
 
@@ -88,6 +88,7 @@ config.bind('sc', 'config-source')
 c.tabs.padding = {'top': 0, 'bottom': 0, 'left': 1, 'right': 1}
 c.tabs.indicator.width = 0
 c.tabs.width = '1%'
+c.downloads.remove_finished = 0
 
 # Fonts
 c.fonts.default_family = 'Iosevka'

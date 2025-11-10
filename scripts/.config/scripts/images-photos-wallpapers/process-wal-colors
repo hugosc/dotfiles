@@ -44,7 +44,11 @@ def enrich_color0(
 
 
 def process_colors(
-    data: dict, lightness_reduction: float, saturation_increase: float
+    data: dict,
+    lightness_reduction: float,
+    saturation_increase: float,
+    other_lightness_reduction: float,
+    other_saturation_increase: float,
 ) -> Dict[str, str]:
     """Process and darken colors, returning a mapping of old to new colors."""
     darkened_colors_map = {}
@@ -58,7 +62,9 @@ def process_colors(
                     original_color, lightness_reduction, saturation_increase
                 )
             else:
-                darkened_color = darken_color(original_color, lightness_reduction)
+                darkened_color = enrich_color0(
+                    original_color, other_lightness_reduction, other_saturation_increase
+                )
             darkened_colors_map[original_color] = darkened_color
             data["colors"][key] = darkened_color
 
@@ -71,7 +77,9 @@ def process_colors(
                     original_color, lightness_reduction, saturation_increase
                 )
             else:
-                darkened_color = darken_color(original_color, lightness_reduction)
+                darkened_color = enrich_color0(
+                    original_color, other_lightness_reduction, other_saturation_increase
+                )
             darkened_colors_map[original_color] = darkened_color
             data["special"][key] = darkened_color
 
@@ -187,16 +195,24 @@ def main():
     templates_dir = Path.home() / ".config" / "wal" / "templates"
     colors_json_file = cache_dir / "colors.json"
 
-    # Parse arguments
-    lightness_reduction = float(sys.argv[1]) if len(sys.argv) > 1 else 0.05
-    saturation_increase = float(sys.argv[2]) if len(sys.argv) > 2 else 0.30
+    # Parse arguments with minimum values of 0
+    lightness_reduction = float(sys.argv[1]) if len(sys.argv) > 1 else 0.0
+    saturation_increase = float(sys.argv[2]) if len(sys.argv) > 2 else 0.0
+    other_lightness_reduction = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
+    other_saturation_increase = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
 
     # Read colors.json once
     with open(colors_json_file) as f:
         data = json.load(f)
 
     # Process colors and get mapping
-    color_map = process_colors(data, lightness_reduction, saturation_increase)
+    color_map = process_colors(
+        data,
+        lightness_reduction,
+        saturation_increase,
+        other_lightness_reduction,
+        other_saturation_increase,
+    )
 
     # Write darkened colors.json once
     with open(colors_json_file, "w") as f:
