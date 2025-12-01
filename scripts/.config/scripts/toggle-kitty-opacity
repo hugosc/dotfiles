@@ -18,7 +18,7 @@ fi
 current_opacity=$(xprop -id "$first_window" _NET_WM_WINDOW_OPACITY 2>/dev/null | grep -oE '[0-9]+$')
 
 if [ -z "$current_opacity" ]; then
-  opacity_uint32=$((85 * 42949672))
+  opacity_uint32=$((100 * 42949672))
 else
   # Toggle: if high (opaque ~3865470976), make transparent; otherwise make opaque
   if [ "$current_opacity" -gt 3865470976 ]; then

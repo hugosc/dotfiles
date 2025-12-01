@@ -1,0 +1,16 @@
+#!/bin/bash
+# Start kitty with neofetch window
+# Position: 30,40 | Size: 546x430
+
+kitty --title Welcome -o font_size=10 sh -c 'neofetch; zsh' &
+
+# Position it as fast as possible
+for i in {1..20}; do
+    WINDOW_ID=$(xdotool search --name "Welcome" 2>/dev/null | head -1)
+    if [ -n "$WINDOW_ID" ]; then
+        xdotool windowsize "$WINDOW_ID" 546 430 2>/dev/null
+        xdotool windowmove "$WINDOW_ID" 30 40 2>/dev/null
+        break
+    fi
+    sleep 0.05
+done

@@ -1,0 +1,22 @@
+#!/bin/bash
+# Wrapper script to launch st with appropriate alpha transparency
+# Reads /tmp/transparency-state to determine opacity
+
+STATE_FILE="/tmp/transparency-state"
+
+# Read current state (default to transparent)
+if [ -f "$STATE_FILE" ]; then
+  current_state=$(cat "$STATE_FILE")
+else
+  current_state="transparent"
+fi
+
+# Set alpha based on state
+if [ "$current_state" = "transparent" ]; then
+  alpha="0.85"
+else
+  alpha="1.0"
+fi
+
+# Launch st with the appropriate alpha flag
+exec st -A "$alpha" "$@"

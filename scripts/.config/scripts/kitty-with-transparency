@@ -1,0 +1,7 @@
+#!/bin/bash
+# Fast kitty launcher with transparency state
+
+# Read state (default transparent) and launch in one conditional
+[ -f /tmp/transparency-state ] && [ "$(cat /tmp/transparency-state)" = "opaque" ] && \
+  exec kitty -o background_opacity=1.0 "$@" || \
+  exec kitty -o background_opacity=0.85 "$@"

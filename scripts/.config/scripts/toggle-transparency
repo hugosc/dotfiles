@@ -1,0 +1,26 @@
+#!/bin/bash
+# Unified transparency toggle using NATIVE transparency
+# Optimized for speed
+
+STATE_FILE="/tmp/transparency-state"
+
+# Toggle state and set values in one go
+if [ -f "$STATE_FILE" ] && [ "$(cat "$STATE_FILE")" = "transparent" ]; then
+  echo "opaque" > "$STATE_FILE"
+  kitty_opacity=1.0
+  emacs_alpha=100
+else
+  echo "transparent" > "$STATE_FILE"
+  kitty_opacity=0.85
+  emacs_alpha=85
+fi
+
+# Apply to all kitty windows in parallel (no loop)
+for socket in /tmp/kitty-*; do
+  [ -S "$socket" ] && kitty @ --to "unix:$socket" set-background-opacity "$kitty_opacity" &
+done 2>/dev/null
+
+# Apply to emacs (async)
+emacsclient -e "(dolist (frame (frame-list)) (set-frame-parameter frame 'alpha-background $emacs_alpha))" &>/dev/null &
+
+wait
