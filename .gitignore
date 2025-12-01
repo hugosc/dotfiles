@@ -46,3 +46,4 @@ dwmblocks/Makefile
 dwmblocks/dwmblocks.c.rej
 ncspot/.config/ncspot/userstate.cbor
 gh/.config/gh
+gh/.config/gh/hosts.yml
