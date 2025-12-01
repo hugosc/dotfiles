@@ -1,0 +1,14 @@
+#!/bin/bash
+# Auto-reload dunst with pywal theme when colors change
+
+# Copy generated dunstrc to active config
+cp ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
+
+# Restart dunst to apply new colors
+if pgrep -x dunst >/dev/null 2>&1; then
+	killall dunst
+	sleep 0.2
+fi
+
+# Start dunst with new config (if not running)
+dunst &

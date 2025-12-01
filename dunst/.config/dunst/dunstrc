@@ -12,11 +12,11 @@
     horizontal_padding = 8
     text_icon_padding = 0
     frame_width = 2
-    frame_color = "#adaca8"
-    separator_color = "#797875"
+    frame_color = "#e8ece2"
+    separator_color = "#a5ac96"
     sort = yes
     idle_threshold = 120
-    font = Iosevka Nerd Font 10
+    font = monospace 10
     line_height = 0
     markup = full
     format = "<b>%s</b>\n%b"
@@ -30,16 +30,16 @@
     show_indicators = yes
 
 [urgency_low]
-    background = "#0C0D07"
-    foreground = "#adaca8"
+    background = "#6a6152"
+    foreground = "#e8ece2"
     timeout = 10
 
 [urgency_normal]
-    background = "#0C0D07"
-    foreground = "#adaca8"
+    background = "#6a6152"
+    foreground = "#e8ece2"
     timeout = 10
 
 [urgency_critical]
-    background = "#575129"
-    foreground = "#adaca8"
+    background = "#cdb69d"
+    foreground = "#e8ece2"
     timeout = 0
