@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
-# Screen recording script with ffmpeg
-# Toggle recording with a single command
-# Saves to ~/Videos with timestamp
-# Integrates with dwmblocks for status indicator
+# Lightweight screen recording with hardware H.264 + WebM conversion support
+# Uses Intel VAAPI for minimal CPU load
+# Records to MP4, converts to WebM offline
 
 REC_DIR="${HOME}/Videos"
 REC_FLAG="${HOME}/.cache/recording"
 REC_GEOMETRY="${HOME}/.cache/rec_geometry"
 
-# Create directories if they don't exist
 mkdir -p "$REC_DIR" "$HOME/.cache"
 
 is_recording() {
@@ -27,9 +25,9 @@ start_recording() {
 	fi
 	
 	# Clean up any orphaned ffmpeg screen recording processes
-	pkill -INT -f "ffmpeg -f x11grab.*screenrecord_" 2>/dev/null
+	pkill -INT -f "ffmpeg -vaapi_device.*screenrecord_" 2>/dev/null
 	sleep 0.5
-	pkill -9 -f "ffmpeg -f x11grab.*screenrecord_" 2>/dev/null
+	pkill -9 -f "ffmpeg -vaapi_device.*screenrecord_" 2>/dev/null
 
 	# Get screen geometry - extract just WxH
 	# xrandr output: "1920x1080+0+0" -> we need "1920x1080"
@@ -53,17 +51,22 @@ start_recording() {
 	# Save output path for later use
 	echo "$output" > "${REC_FLAG}.output"
 	
-	# Start ffmpeg recording in background
-	# Uses h264 codec, 30fps, medium quality + mic audio
-	ffmpeg -f x11grab \
+	# Hardware H.264 recording (VAAPI) — ~5-10% CPU on i7-8550U
+	# Options:
+	#  -qp 26    : Quality (18-28, lower=better, 26 is good balance)
+	#  -rc vbr   : Variable bitrate for better compression
+	#  -r 30     : Framerate (change to 20 for even lighter)
+	ffmpeg -vaapi_device /dev/dri/renderD128 \
+		-f x11grab \
 		-framerate 30 \
 		-s "$geometry" \
 		-i "$DISPLAY" \
 		-f pulse \
 		-i alsa_input.pci-0000_00_1f.3.analog-stereo \
-		-c:v libx264 \
-		-crf 23 \
-		-preset fast \
+		-vf 'format=nv12,hwupload' \
+		-c:v h264_vaapi \
+		-qp 26 \
+		-rc vbr \
 		-c:a aac \
 		-q:a 4 \
 		-y "$output" \
@@ -125,6 +128,27 @@ stop_recording() {
 		echo -n "$file_uri" | xclip -selection clipboard -t text/uri-list -i
 		filename=$(basename "$output")
 		notify-send --urgency=normal "Recording stopped" "$filename (copied to clipboard)"
+		
+		# Queue WebM conversion in background (low priority)
+		# Conversion will happen in the background without blocking
+		webm_output="${output%.*}.webm"
+		if [[ ! -f "$webm_output" ]]; then
+			(
+				sleep 2  # Give file a moment to fully flush to disk
+				nice -n 10 ionice -c3 ~/.config/scripts/audio-video/webm-convert "$output" 2>&1 | \
+					while IFS= read -r line; do
+						# Log conversion progress to syslog (optional, for debugging)
+						logger -t screenrecord-convert "$line"
+					done
+				# When conversion is done, copy WebM to clipboard and notify
+				if [[ -f "$webm_output" ]]; then
+					webm_uri="file://${webm_output}"
+					echo -n "$webm_uri" | xclip -selection clipboard -t text/uri-list -i
+					webm_filename=$(basename "$webm_output")
+					notify-send --urgency=normal "WebM ready" "$webm_filename (copied to clipboard)"
+				fi
+			) &
+		fi
 	fi
 }
 
@@ -156,14 +180,14 @@ case "$1" in
 Usage: $0 <command>
 
 Commands:
-  start    - Start screen recording
-  stop     - Stop screen recording
-  toggle   - Toggle recording on/off (use with keybind)
-  status   - Show recording status (for dwmblocks)
+  start    - Start screen recording (hardware H.264, ~5-10% CPU)
+  stop     - Stop and save recording
+  toggle   - Toggle recording on/off
+  status   - Show recording status
 
 Examples:
-  $0 toggle         # Toggle recording
-  $0 status         # Check if recording (returns empty if not)
+  $0 toggle
+  $0 status
 EOF
 		exit 1
 		;;
