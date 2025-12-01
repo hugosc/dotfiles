@@ -1,3 +1,6 @@
+# Secrets
+**/gh/.config/hosts.yml
+
 # Cache and temporary files
 *.log
 *.tmp
@@ -42,3 +45,4 @@ dwmblocks/README.md
 dwmblocks/Makefile
 dwmblocks/dwmblocks.c.rej
 ncspot/.config/ncspot/userstate.cbor
+gh/.config/gh
