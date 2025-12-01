@@ -37,7 +37,8 @@ case "$#" in
   wal -i "$1" --backend colorz &&
     ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-    "$PW16SCRIPT"
+    "$PW16SCRIPT" &&
+    ~/.config/wal/hooks/emacs-theme-reload
   ;;
 2)
   # Handle both theme and dark/light/medium mode
@@ -47,21 +48,25 @@ case "$#" in
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+    nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
   elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
     wal -i "$1" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+    nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
   elif [[ "$2" == "dark" ]]; then
     # Generate dark colors - regenerate templates to ensure no darkened values remain
     wal -i "$1" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-      "$PW16SCRIPT"
+      "$PW16SCRIPT" &&
+      ~/.config/wal/hooks/emacs-theme-reload
   else
     # Assume it's a theme name
-    wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+      ~/.config/wal/hooks/emacs-theme-reload
   fi
   ;;
 *) exit 0 ;;

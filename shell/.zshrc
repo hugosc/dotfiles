@@ -177,6 +177,8 @@ function y() {
 export PATH="$PATH:/home/croc/.local/bin"
 # export PATH="$HOME/.tmuxifier/bin:$PATH"
 
+export PATH="$PATH:/home/croc/.config/emacs/bin"
+
 # Enable fzf and zoxide (thefuck moved to lazy load)
 eval "$(fzf --zsh)"
 eval "$(zoxide init zsh)"
