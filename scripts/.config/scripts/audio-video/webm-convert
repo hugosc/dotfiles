@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# Convert MP4 recording to high-quality WebM (VP9)
+# Run this in background when laptop is idle
+# Usage: webm-convert recording.mp4
+# Output: recording.webm
+
+if [[ -z "$1" ]]; then
+	echo "Usage: $0 <input.mp4>"
+	echo "Example: $0 screenrecord_20250128_120530.mp4"
+	exit 1
+fi
+
+input="$1"
+if [[ ! -f "$input" ]]; then
+	echo "Error: File not found: $input"
+	exit 1
+fi
+
+# Output same name but .webm
+output="${input%.*}.webm"
+
+if [[ -f "$output" ]]; then
+	echo "Warning: $output already exists, skipping"
+	exit 1
+fi
+
+echo "Converting to WebM: $input → $output"
+echo "This will take a while (VP9 is slower). You can close this terminal."
+
+# VP9 encoding with libvpx-vp9 (CPU) for best quality/compression
+# Uses nice/ionice to keep CPU impact low when run in background
+
+nice -n 10 ionice -c3 ffmpeg -i "$input" \
+	-c:v libvpx-vp9 \
+	-crf 36 \
+	-b:v 0 \
+	-speed 4 \
+	-tile-columns 4 \
+	-threads 8 \
+	-row-mt 1 \
+	-auto-alt-ref 1 \
+	-lag-in-frames 25 \
+	-c:a libopus \
+	-b:a 96k \
+	"$output" && echo "✓ Done: $output"
