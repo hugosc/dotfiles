@@ -34,15 +34,20 @@ case "$#" in
   ;;
 1)
   # Dark mode - default behavior when called with just wallpaper path
-  wal -i "$1" --backend colorz &&
+  feh --bg-fill "$1" &&
+    wal -i "$1" --backend colorz &&
     ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
     "$PW16SCRIPT" &&
     ~/.config/wal/hooks/emacs-theme-reload
   ;;
 2)
-  # Handle both theme and dark/light/medium mode
-  if [[ "$2" == "light" ]]; then
+  # Handle both theme and dark/light/medium mode, or wallpaper-only mode
+  if [[ "$2" == "wallpaper-only" ]]; then
+    # Set wallpaper WITHOUT updating pywal theme
+    feh --bg-fill "$1" &&
+      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+  elif [[ "$2" == "light" ]]; then
     # Generate light colors, darken them slightly with optimized combined script
     wal -i "$1" -l &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&

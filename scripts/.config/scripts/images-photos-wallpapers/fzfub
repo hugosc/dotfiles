@@ -32,9 +32,9 @@ case $2 in
   IMGFILTER='yes'
   ;;
 *w) # wallpapermenu options
-  FZFARGS='enter:execute-silent(fzfub-wallpaper-dark {}),ctrl-l:execute-silent(fzfub-wallpaper-light {}),ctrl-f:execute-silent(fzfub-wallpaper-medium {}),ctrl-w:execute-silent(fzfub-wallpaper-dark {}),ctrl-e:become(gimp {+} > /dev/null 2>&1),ctrl-d:ignore'
+  FZFARGS='enter:execute-silent(fzfub-wallpaper-dark {}),ctrl-l:execute-silent(fzfub-wallpaper-light {}),ctrl-f:execute-silent(fzfub-wallpaper-medium {}),ctrl-b:execute-silent(fzfub-wallpaper-only {}),ctrl-w:execute-silent(fzfub-wallpaper-dark {}),ctrl-e:become(gimp {+} > /dev/null 2>&1),ctrl-d:ignore'
   ILABEL='Wallpaper Menu'
-  LABEL='[enter/*d*ark  *l*ight  ctrl-*f* medium  *e*dit-gimp]'
+  LABEL='[enter/*d*ark  *l*ight  ctrl-*f* medium  ctrl-*b* only  *e*dit-gimp]'
   IMGFILTER='yes'
   ;;
 *m) # ₊⊹ɪᴍɢᴍɢᴋ⊹₊ options

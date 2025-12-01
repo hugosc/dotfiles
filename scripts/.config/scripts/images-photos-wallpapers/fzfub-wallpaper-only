@@ -1,0 +1,5 @@
+#!/bin/bash
+# Set wallpaper only, without updating pywal theme
+# Called by Ctrl+B in wallpaper menu
+
+fzfub-wallpapermenu "$1" "wallpaper-only"
