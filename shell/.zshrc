@@ -91,6 +91,8 @@ else
   alias ls="eza --color=always --long --git --no-filesize --icons=always --no-time --no-user --no-permissions"
 fi
 
+alias listall="eza -a --sort=size"
+
 # Use z for cd
 alias cd="z"
 
@@ -102,6 +104,48 @@ alias lg="lazygit"
 
 # Alias for recording with wf-recorder
 alias rec="wf-recorder -f ~/Videos/temprecording.webm"
+
+# Function to split video files into two parts (for file size)
+split() {
+	if [[ $# -lt 1 ]]; then
+		echo "Usage: split <video_file>"
+		echo "Splits video into two equal parts: part1 and part2"
+		echo "Supports: mp4, webm, mkv, mov, etc."
+		return 1
+	fi
+
+	local input="$1"
+	if [[ ! -f "$input" ]]; then
+		echo "Error: File not found: $input"
+		return 1
+	fi
+
+	# Get video duration in seconds
+	local duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:nokey=1 "$input" 2>/dev/null)
+	if [[ -z "$duration" ]]; then
+		echo "Error: Could not determine video duration"
+		return 1
+	fi
+
+	# Calculate midpoint
+	local midpoint=$(echo "$duration / 2" | bc)
+
+	# Get file extension and base name
+	local ext="${input##*.}"
+	local base="${input%.*}"
+
+	# Create part 1 (0 to midpoint)
+	echo "Creating part 1: ${base}_part1.${ext}"
+	ffmpeg -i "$input" -t "$midpoint" -c copy "${base}_part1.${ext}" -y 2>/dev/null
+
+	# Create part 2 (midpoint to end)
+	echo "Creating part 2: ${base}_part2.${ext}"
+	ffmpeg -i "$input" -ss "$midpoint" -c copy "${base}_part2.${ext}" -y 2>/dev/null
+
+	echo "✓ Done!"
+	echo "  Part 1: ${base}_part1.${ext}"
+	echo "  Part 2: ${base}_part2.${ext}"
+}
 
 # Alias for ani-cli
 alias watch="ani-cli"
