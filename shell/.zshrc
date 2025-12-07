@@ -185,12 +185,8 @@ _fzf_comprun() {
   esac
 }
 
-# FZF default options for enhanced appearance
+# FZF default options - use pywal colors with enhanced appearance
 export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
---color=fg:-1,fg+:#d0d0d0,bg:-1,bg+:#000000
---color=hl:#5f8787,hl+:#888888,info:#99bbaa,marker:#99bbaa
---color=prompt:#999999,spinner:#ddeecc,pointer:#ddeecc,header:#87afaf
---color=border:#444444,preview-fg:#c1c1c1,label:#aeaeae,query:#d9d9d9
 --border="rounded" --border-label="fo™ Search Technology" --border-label-pos="0" --preview-window="border-rounded"
 --margin="1" --prompt="λ " --marker="* " --pointer=">"
 --separator="_" --scrollbar="|"'

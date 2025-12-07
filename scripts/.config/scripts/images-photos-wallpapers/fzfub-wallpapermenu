@@ -33,13 +33,16 @@ case "$#" in
   st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0
   ;;
 1)
-  # Dark mode - default behavior when called with just wallpaper path
-  feh --bg-fill "$1" &&
-    wal -i "$1" --backend colorz &&
-    ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
-    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-    "$PW16SCRIPT" &&
-    ~/.config/wal/hooks/emacs-theme-reload
+   # Dark mode - default behavior when called with just wallpaper path
+   feh --bg-fill "$1" &&
+     wal -i "$1" --backend colorz &&
+     ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
+     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+     "$PW16SCRIPT" &&
+     nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
+     nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
+     nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+     sleep 0.5
   ;;
 2)
   # Handle both theme and dark/light/medium mode, or wallpaper-only mode
@@ -53,25 +56,35 @@ case "$#" in
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+    nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
+    nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
   elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
     wal -i "$1" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
+    nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-  elif [[ "$2" == "dark" ]]; then
-    # Generate dark colors - regenerate templates to ensure no darkened values remain
-    wal -i "$1" &&
-      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
-      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-      "$PW16SCRIPT" &&
-      ~/.config/wal/hooks/emacs-theme-reload
-  else
-    # Assume it's a theme name
-    wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-      ~/.config/wal/hooks/emacs-theme-reload
+    nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+   elif [[ "$2" == "dark" ]]; then
+     # Generate dark colors - regenerate templates to ensure no darkened values remain
+     wal -i "$1" &&
+       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
+       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+       "$PW16SCRIPT" &&
+       nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
+       nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
+       nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+       sleep 0.5
+   else
+     # Assume it's a theme name
+     wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
+       nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
+       nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
+       nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+       sleep 0.5
   fi
   ;;
 *) exit 0 ;;

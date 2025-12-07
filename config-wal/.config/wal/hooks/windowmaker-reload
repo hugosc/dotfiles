@@ -1,0 +1,35 @@
+#!/bin/bash
+# Auto-reload WindowMaker colors when pywal changes
+# SIMPLIFIED VERSION - only essential colors
+
+# Only run if WindowMaker is running
+if ! pgrep -x wmaker >/dev/null 2>&1; then
+    exit 0
+fi
+
+# Source pywal colors
+. ~/.cache/wal/colors.sh
+
+# Conservative theming - only the most essential colors
+# These update automatically on window focus, no restart needed
+
+# Focused window titlebar
+wdwrite WindowMaker FTitleColor "\"$foreground\"" 2>/dev/null
+wdwrite WindowMaker FTitleBack "(solid, \"$color1\")" 2>/dev/null
+
+# Unfocused window titlebar  
+wdwrite WindowMaker UTitleColor "\"$color8\"" 2>/dev/null
+wdwrite WindowMaker UTitleBack "(solid, \"$color0\")" 2>/dev/null
+
+# Window borders
+wdwrite WindowMaker FrameFocusedBorderColor "\"$color1\"" 2>/dev/null
+wdwrite WindowMaker FrameBorderColor "\"$color8\"" 2>/dev/null
+wdwrite WindowMaker FrameSelectedBorderColor "\"$foreground\"" 2>/dev/null
+
+# Workspace background gradient
+wdwrite WindowMaker WorkspaceBack "(vgradient, \"$color8\", \"$background\")" 2>/dev/null
+
+# Colors will apply on next window focus change
+# No restart needed!
+
+exit 0

@@ -7,8 +7,10 @@ cp ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
 # Restart dunst to apply new colors
 if pgrep -x dunst >/dev/null 2>&1; then
 	killall dunst
-	sleep 0.2
+	sleep 0.5
 fi
 
 # Start dunst with new config (if not running)
-dunst &
+# Use nohup and background to prevent hanging on dbus
+nohup dunst > /tmp/dunst-reload.log 2>&1 &
+sleep 0.2

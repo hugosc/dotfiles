@@ -1,0 +1,28 @@
+#!/bin/bash
+# Dunst watchdog - auto-restarts dunst if it crashes
+# Run this in the background or add to your session startup
+
+LOGFILE="/tmp/dunst-watchdog.log"
+CHECK_INTERVAL=15
+
+log_msg() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+}
+
+log_msg "Dunst watchdog started"
+
+while true; do
+    if ! pgrep -x dunst >/dev/null 2>&1; then
+        log_msg "Dunst not running, restarting..."
+        # Use timeout and nohup to prevent hangs, redirect stderr to avoid dbus errors
+        timeout 5 nohup dunst >/dev/null 2>&1 &
+        sleep 3
+        if pgrep -x dunst >/dev/null 2>&1; then
+            log_msg "Dunst restarted successfully"
+        else
+            log_msg "WARNING: Dunst restart may have failed, will retry"
+        fi
+    fi
+    
+    sleep "$CHECK_INTERVAL"
+done

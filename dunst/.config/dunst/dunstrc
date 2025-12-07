@@ -2,18 +2,20 @@
     # Display
     monitor = 0
     follow = mouse
-    geometry = "300x50-10+30"
+    width = 300
+    height = (0, 300)
+    offset = (10, 30)
+    origin = top-right
     indicate_hidden = yes
     shrink = no
     transparency = 0
-    notification_height = 0
     separator_height = 2
     padding = 8
     horizontal_padding = 8
     text_icon_padding = 0
     frame_width = 2
-    frame_color = "#e8ece2"
-    separator_color = "#a5ac96"
+    frame_color = "#577761"
+    separator_color = "#6b8d8a"
     sort = yes
     idle_threshold = 120
     font = monospace 10
@@ -30,16 +32,16 @@
     show_indicators = yes
 
 [urgency_low]
-    background = "#6a6152"
-    foreground = "#e8ece2"
+    background = "#0E1012"
+    foreground = "#9acac6"
     timeout = 10
 
 [urgency_normal]
-    background = "#6a6152"
-    foreground = "#e8ece2"
+    background = "#0E1012"
+    foreground = "#9acac6"
     timeout = 10
 
 [urgency_critical]
-    background = "#cdb69d"
-    foreground = "#e8ece2"
+    background = "#324E4B"
+    foreground = "#9acac6"
     timeout = 0
