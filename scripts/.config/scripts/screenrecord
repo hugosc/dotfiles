@@ -51,11 +51,15 @@ start_recording() {
 	# Save output path for later use
 	echo "$output" > "${REC_FLAG}.output"
 	
+	# Get the monitor source dynamically from the default sink
+	MONITOR_SOURCE="$(pactl get-default-sink).monitor"
+	
 	# Hardware H.264 recording (VAAPI) — ~5-10% CPU on i7-8550U
 	# Options:
 	#  -qp 26    : Quality (18-28, lower=better, 26 is good balance)
 	#  -rc vbr   : Variable bitrate for better compression
 	#  -r 30     : Framerate (change to 20 for even lighter)
+	# Audio: captures both mic and screen audio, mixes them together
 	ffmpeg -vaapi_device /dev/dri/renderD128 \
 		-f x11grab \
 		-framerate 30 \
@@ -63,6 +67,11 @@ start_recording() {
 		-i "$DISPLAY" \
 		-f pulse \
 		-i alsa_input.pci-0000_00_1f.3.analog-stereo \
+		-f pulse \
+		-i "$MONITOR_SOURCE" \
+		-filter_complex "[1:a][2:a]amix=inputs=2:duration=longest[aout]" \
+		-map 0:v \
+		-map "[aout]" \
 		-vf 'format=nv12,hwupload' \
 		-c:v h264_vaapi \
 		-qp 26 \
