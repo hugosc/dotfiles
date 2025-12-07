@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Watchdog that keeps clipboard-monitor running
+# Restarts it if it crashes
+
+export DISPLAY="${DISPLAY:-:0}"
+MONITOR_SCRIPT="$HOME/.config/scripts/clipboard-monitor"
+
+while true; do
+    if ! pgrep -f "clipboard-monitor" > /dev/null 2>&1; then
+        echo "[$(date)] clipboard-monitor not running, starting..." >> /tmp/clipboard-watchdog.log
+        "$MONITOR_SCRIPT" >> /tmp/clipboard-monitor.log 2>&1 &
+        sleep 2
+    fi
+    sleep 15
+done

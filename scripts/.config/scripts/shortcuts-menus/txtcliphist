@@ -15,7 +15,7 @@ write() {
   [ -z "$clip" ] && exit 0
   multiline=$(echo "$clip" | sed ':a;N;$!ba;s/\n/'"$placeholder"'/g')
   grep -Fxq "$multiline" "$histfile" || echo "$multiline" >> "$histfile"
-  notification=$(echo \"$multiline\") ;}
+  notification="Added to clipboard history" ;}
 
 sel() {
    DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)

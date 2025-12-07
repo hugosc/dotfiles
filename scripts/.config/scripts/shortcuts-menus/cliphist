@@ -33,16 +33,7 @@ case "$choice" in
         fi
         ;;
     Images)
-        # Launch fzf+ueberzug++ preview in st (optimized geometry)
-        read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
-        TERM_W=$((160 * 8))
-        TERM_H=$((25 * 14))
-        OFFSET_X=$(( (SCREEN_W - TERM_W) / 2 ))
-        OFFSET_Y=$(( (SCREEN_H - TERM_H) / 2 ))
-        
-        # Optimized st launch: removed sh wrapper, direct exec
-        st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf \
-           -g "160x25+${OFFSET_X}+${OFFSET_Y}" \
-           -e bash -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec ~/.config/scripts/shortcuts-menus/cliphist-images-preview' &
+        # Use fzfub-based image picker
+        ~/.config/scripts/imgcliphist sel &
         ;;
 esac

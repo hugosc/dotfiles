@@ -1,0 +1,22 @@
+#!/bin/bash
+# Copy file(s) to clipboard with proper MIME types for Discord/browsers
+# Usage: file-copy file1 [file2 ...]
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 file1 [file2 ...]"
+    exit 1
+fi
+
+# Build URI list
+uri_list=""
+for file in "$@"; do
+    # Convert to absolute path
+    abs_path=$(realpath "$file" 2>/dev/null || echo "$file")
+    
+    # Convert to file:// URI
+    uri="file://$(python3 -c "import urllib.parse; print(urllib.parse.quote('$abs_path'))")"
+    uri_list+="$uri"$'\n'
+done
+
+# Copy URI list to clipboard
+echo -n "$uri_list" | xclip -selection clipboard -t text/uri-list

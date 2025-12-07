@@ -1,113 +1,102 @@
 #!/usr/bin/env bash
-# Robust clipboard monitor for X11 feeding cliphist
-# - Prefer event-driven via clipnotify
-# - Fallback to efficient polling with binary-safe dedup
+# Clean clipboard monitor for X11
+# - Text goes to cliphist
+# - Images go to ~/.cache/hist/
 
 set -euo pipefail
 export DISPLAY="${DISPLAY:-:0}"
 
-# Ensure cliphist exists
-if ! command -v cliphist >/dev/null 2>&1; then
-  echo "cliphist not found in PATH" >&2
-  exit 1
-fi
+# Ensure tools exist
+command -v cliphist >/dev/null 2>&1 || { echo "cliphist not found" >&2; exit 1; }
+command -v xclip >/dev/null 2>&1 || { echo "xclip not found" >&2; exit 1; }
 
-# History directory for img-text-clipboard-history script
-HIST=~/.cache/hist
-mkdir -p "$HIST" 2>/dev/null || true
+# Image history directory
+HIST_DIR=~/.cache/hist
+mkdir -p "$HIST_DIR" 2>/dev/null || true
 
-# Track last store time and hash to prevent immediate duplicates
-last_store_time=0
+# Track last stored content to prevent duplicates
 last_stored_hash=""
 
-# Helper: store clipboard content, preferring image when available
-store_current_clipboard() {
-  local current_time=$(date +%s)
-  local cur_hash=""
-  
-  # Compute hash of current clipboard content
-  if xclip -selection clipboard -t image/png -o >/dev/null 2>&1; then
-    local tmp
-    tmp=$(mktemp --suffix=.png)
-    if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
-      cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
-      
-      # Skip if same hash (always check, not just within 2 seconds)
-      if [[ "$cur_hash" == "$last_stored_hash" ]]; then
-        rm -f "$tmp"
+# Store clipboard content
+store_clipboard() {
+    local cur_hash=""
+    
+    # Check if clipboard contains file URIs (skip these - they're for drag-and-drop)
+    if timeout 2 xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -qi "text/uri-list"; then
         return
-      fi
-      
-      # Store ONLY in ~/.cache/hist/
-      local hist_file="$HIST/$(date '+%a_%b%d%Y_%H%M%S').png"
-      cp "$tmp" "$hist_file" 2>/dev/null && notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
-      
-      last_stored_hash="$cur_hash"
-      last_store_time=$current_time
-      rm -f "$tmp"
+    fi
+    
+    # Check if clipboard contains an image
+    if timeout 2 xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -qi "image/png"; then
+        # Handle image
+        local tmp=$(mktemp --suffix=.png)
+        
+        if timeout 2 xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
+            # Verify it's a valid PNG file using file command
+            if ! file "$tmp" 2>/dev/null | grep -q "PNG image data"; then
+                # Not a real PNG image
+                rm -f "$tmp"
+                return
+            fi
+            
+            # Verify it's not too small (at least 1KB)
+            local size=$(stat -f%z "$tmp" 2>/dev/null || stat -c%s "$tmp" 2>/dev/null)
+            if [[ $size -lt 1000 ]]; then
+                # Too small, probably corrupt
+                rm -f "$tmp"
+                return
+            fi
+            
+            # Check if it's a duplicate
+            cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
+            if [[ "$cur_hash" == "$last_stored_hash" ]]; then
+                rm -f "$tmp"
+                return
+            fi
+            
+            # Store image with timestamp
+            local hist_file="$HIST_DIR/$(date '+%Y%m%d_%H%M%S').png"
+            mv "$tmp" "$hist_file" 2>/dev/null
+            
+            # Send notification with thumbnail
+            notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
+            
+            last_stored_hash="$cur_hash"
+        else
+            rm -f "$tmp"
+        fi
+        
     else
-      rm -f "$tmp"
+        # Handle text
+        if text=$(timeout 2 xclip -selection clipboard -o 2>/dev/null); then
+            # Skip empty or very short text
+            [[ -z "$text" ]] && return
+            [[ ${#text} -lt 3 ]] && return
+            
+            # Check for duplicate
+            cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
+            if [[ "$cur_hash" == "$last_stored_hash" ]]; then
+                return
+            fi
+            
+            # Store in cliphist
+            printf "%s" "$text" | cliphist store 2>/dev/null || true
+            last_stored_hash="$cur_hash"
+        fi
     fi
-  else
-    # Fallback to text - keep using cliphist for text
-    if text=$(xclip -selection clipboard -o 2>/dev/null); then
-      cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
-      
-      # Skip if same hash (always check, not just within 2 seconds)
-      if [[ "$cur_hash" == "$last_stored_hash" ]]; then
-        return
-      fi
-      
-      printf "%s" "$text" | cliphist store 2>/dev/null || true
-      last_stored_hash="$cur_hash"
-      last_store_time=$current_time
-    fi
-  fi
 }
 
-# Preferred: use clipnotify for change events (Arch package: clipnotify)
+# Use clipnotify if available (event-driven)
 if command -v clipnotify >/dev/null 2>&1; then
-  while clipnotify; do
-    store_current_clipboard
-  done
-  exit 0
+    echo "Using clipnotify (event-driven mode)" >&2
+    while clipnotify 2>/dev/null; do
+        store_clipboard
+    done
+else
+    # Fallback to polling
+    echo "Using polling mode (install clipnotify for better performance)" >&2
+    while true; do
+        store_clipboard
+        sleep 0.5
+    done
 fi
-
-# Fallback: polling with binary-safe deduplication
-# Notes:
-# - We compute a sha256 of current payload (image via temp file, text via pipe)
-# - Only store when hash changes or type flips between text/image
-last_hash=""
-last_type=""
-
-while true; do
-  if xclip -selection clipboard -t image/png -o >/dev/null 2>&1; then
-    tmp=$(mktemp --suffix=.png)
-    if xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
-      cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
-      # Skip if same hash (removed type check - hash is enough)
-      if [[ "$cur_hash" != "$last_hash" ]]; then
-        # Store ONLY in ~/.cache/hist/
-        hist_file="$HIST/$(date '+%a_%b%d%Y_%H%M%S').png"
-        cp "$tmp" "$hist_file" 2>/dev/null && notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
-        
-        last_hash="$cur_hash"
-        last_type="image"
-      fi
-    fi
-    rm -f "$tmp"
-  else
-    # Text path
-    if text=$(xclip -selection clipboard -o 2>/dev/null); then
-      cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
-      # Skip if same hash (removed type check - hash is enough)
-      if [[ "$cur_hash" != "$last_hash" ]]; then
-        printf "%s" "$text" | cliphist store 2>/dev/null || true
-        last_hash="$cur_hash"
-        last_type="text"
-      fi
-    fi
-  fi
-  # Polling interval: balance responsiveness vs CPU
-  sleep 0.3
-done

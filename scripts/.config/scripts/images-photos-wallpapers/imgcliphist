@@ -1,41 +1,24 @@
 #!/usr/bin/env bash
+# Image clipboard history using fzfub
 
-export DISPLAY="${DISPLAY:-:0}"
+HIST_DIR=~/.cache/hist
 
-hist=~/.cache/hist
-
-add() {
-  [ -e "$hist" ] || mkdir -p $hist
-  isimg=$(xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -i png)
-  [[ -n $isimg ]] && xclip -selection clipboard -t image/png -o >$hist/$(date '+%Y%m%d_%H%M%S').png && notify-send --urgency=low "$(printf '\uf0c6') clip history"
-}
-
-sel() {
-  [[ ! -d "$hist" ]] && notify-send "No image history yet" && exit 0
-
-  if command -v nsxiv >/dev/null; then
-    # Use nsxiv for nice image preview
-    # Single image: Press 'Q' to select current image and quit
-    # Multiple images: Press 'm' to mark, then 'q' to quit
-    selected=$(nsxiv -otb "$hist"/*)
-    # nsxiv outputs full paths, so extract just the filename
-    [[ -n "$selected" ]] && selected=$(basename "$selected")
-  else
-    # Fallback to dmenu if nsxiv is not installed
-    DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
-    selected=$(ls -t "$hist" | dmenu $DMENU_COLORS -c -l 20 -i -p "Image:" -fn "monospace:size=10")
-    # Extract just the filename if dmenu returns full path
-    [[ "$selected" =~ / ]] && selected=$(basename "$selected")
-  fi
-
-  [[ -n "$selected" ]] && xclip -i -selection clipboard -t image/png "$hist/$selected" && notify-send --urgency=low "Image copied to clipboard"
-}
+# Ensure hist directory exists
+mkdir -p "$HIST_DIR"
 
 case "$1" in
-add*) add "$@" ;;
-sel*) sel "$@" ;;
-*)
-  printf "$0 | file: $hist\n\nadd - add image from clipboard to history\nsel - select image: press 'Q' for single image, or 'm' to mark multiple then 'q'\n"
-  exit 0
-  ;;
+    add)
+        # Add copied image to history
+        if xclip -selection clipboard -o -t targets 2>/dev/null | grep -q png; then
+            xclip -selection clipboard -t image/png -o > "$HIST_DIR/$(date '+%a_%b%d%y_%H%M%S').png" && \
+            notify-send -i "$HIST_DIR/$(ls -t "$HIST_DIR" | head -n 1)" "📎 clipped img"
+        fi
+        ;;
+    sel|*)
+        # Select from clipboard history
+        # Using fzfub with custom bindings for clipboard mode
+        st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf \
+           -g "107x25+100+270" \
+           -e bash -c "cat ~/.cache/wal/sequences 2>/dev/null; fzfub $HIST_DIR c --tac"
+        ;;
 esac
