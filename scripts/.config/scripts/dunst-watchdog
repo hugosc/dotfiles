@@ -14,8 +14,8 @@ log_msg "Dunst watchdog started"
 while true; do
     if ! pgrep -x dunst >/dev/null 2>&1; then
         log_msg "Dunst not running, restarting..."
-        # Use timeout and nohup to prevent hangs, redirect stderr to avoid dbus errors
-        timeout 5 nohup dunst >/dev/null 2>&1 &
+        # Start dunst in background
+        nohup dunst >/dev/null 2>&1 &
         sleep 3
         if pgrep -x dunst >/dev/null 2>&1; then
             log_msg "Dunst restarted successfully"
