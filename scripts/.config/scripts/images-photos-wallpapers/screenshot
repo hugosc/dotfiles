@@ -43,8 +43,11 @@ post(){
              -annotate +20+20 "${WATERMARK_TEXT:-$(date '+%Y-%m-%d %H:%M')}" \
              "$FILE"
      }
-     xclip -selection clipboard -t image/png -i "$FILE"
-     # clipboard-monitor will handle adding to history and showing notification
+     # Copy to clipboard - use nohup to keep xclip alive
+     nohup xclip -selection clipboard -t image/png -i "$FILE" >/dev/null 2>&1 &
+     disown
+     # Give clipboard-monitor time to catch it
+     sleep 0.2
  }
 
 colorpicker(){ 
