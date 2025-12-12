@@ -6,6 +6,10 @@ export ZSH="$HOME/.oh-my-zsh"
 # Set default editor
 export EDITOR=nvim
 
+# Initialize Rust/Cargo via rustup
+export PATH="$HOME/.cargo/bin:$PATH"
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
 # Source local secrets (API keys, SSH passwords, etc.)
 # This file should NEVER be committed to git
 if [[ -f "$HOME/.zshrc.local" ]]; then
