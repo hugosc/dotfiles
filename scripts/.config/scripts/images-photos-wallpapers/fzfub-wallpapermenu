@@ -45,8 +45,21 @@ case "$#" in
      sleep 0.5
   ;;
 2)
-  # Handle both theme and dark/light/medium mode, or wallpaper-only mode
-  if [[ "$2" == "wallpaper-only" ]]; then
+  # Handle both theme and dark/light/medium mode, or wallpaper-only mode, or theme-only mode
+  if [[ "$1" == "theme-only" ]]; then
+    # Apply preset theme WITHOUT changing wallpaper (theme-only mode from Ctrl+T)
+    wal --theme "$2" &&
+      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
+      "$PW16SCRIPT"
+    
+    # Reload hooks synchronously to ensure proper application
+    bash ~/.config/wal/hooks/dunst-reload
+    bash ~/.config/wal/hooks/emacs-theme-reload
+    bash ~/.config/wal/hooks/windowmaker-reload
+    
+    # Give everything a moment to settle
+    sleep 0.3
+  elif [[ "$2" == "wallpaper-only" ]]; then
     # Set wallpaper WITHOUT updating pywal theme
     feh --bg-fill "$1" &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
@@ -74,13 +87,6 @@ case "$#" in
        ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
        ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
        "$PW16SCRIPT" &&
-       nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
-       nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-       nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-       sleep 0.5
-   else
-     # Assume it's a theme name
-     wal -i "$1" --theme "$2" -o "$PW16SCRIPT" && ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
        nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
        nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
        nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &

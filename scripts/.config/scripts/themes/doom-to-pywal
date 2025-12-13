@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""
+Convert Doom Emacs themes to pywal JSON format.
+Usage: doom-to-pywal <theme-file.el> [output-dir]
+"""
+
+import sys
+import re
+import json
+from pathlib import Path
+
+
+def extract_colors(theme_file):
+    """Extract color definitions from Doom theme elisp file."""
+    with open(theme_file, 'r') as f:
+        content = f.read()
+    
+    colors = {}
+    
+    # Match color definitions like: (color-name '("#hex" ...
+    # Patterns to match:
+    # (bg         '("#1a1b26" nil       nil            ))
+    # (red        '("#f7768e" "#f7768e" "red"          ))
+    pattern = r'\((\w+(?:-\w+)?)\s+\'?\(?"(#[0-9a-fA-F]{6})"'
+    
+    for match in re.finditer(pattern, content):
+        color_name = match.group(1)
+        hex_value = match.group(2)
+        colors[color_name] = hex_value.lower()
+    
+    return colors
+
+
+def is_light_theme(theme_file):
+    """Detect if theme is light variant."""
+    name = Path(theme_file).stem.lower()
+    
+    # Check filename
+    if 'light' in name or 'day' in name:
+        return True
+    
+    # Check for :background-mode in file
+    with open(theme_file, 'r') as f:
+        content = f.read()
+        if ':background-mode \'light' in content:
+            return True
+    
+    return False
+
+
+def lighten_color(hex_color, amount=0.3):
+    """Lighten a hex color by a percentage."""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    
+    r = min(255, int(r + (255 - r) * amount))
+    g = min(255, int(g + (255 - g) * amount))
+    b = min(255, int(b + (255 - b) * amount))
+    
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def darken_color(hex_color, amount=0.3):
+    """Darken a hex color by a percentage."""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    
+    r = max(0, int(r * (1 - amount)))
+    g = max(0, int(g * (1 - amount)))
+    b = max(0, int(b * (1 - amount)))
+    
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def get_color(colors, *names):
+    """Get first available color from list of names."""
+    for name in names:
+        if name in colors:
+            return colors[name]
+    return "#000000"  # fallback
+
+
+def convert_to_pywal(colors, is_light=False):
+    """Convert Doom colors to pywal 16-color palette."""
+    
+    # Special colors
+    bg = get_color(colors, 'bg', 'base2')
+    fg = get_color(colors, 'fg', 'base7')
+    cursor = get_color(colors, 'cyan', 'blue', 'highlight')
+    
+    # Base 16 colors
+    # Dark themes: black (base0) -> white (base8/fg)
+    # Light themes: white (bg) -> black (fg)
+    
+    if is_light:
+        # Light theme mapping
+        color0 = get_color(colors, 'base7', 'fg-alt', 'fg')  # Light gray (inverted for light)
+        color8 = get_color(colors, 'base5', 'grey', 'base4')  # Medium gray
+    else:
+        # Dark theme mapping
+        color0 = get_color(colors, 'base0', 'base1', 'bg-alt')  # Black/dark gray
+        color8 = get_color(colors, 'grey', 'base4', 'base5')  # Bright black (gray)
+    
+    # Standard ANSI colors (1-6)
+    color1 = get_color(colors, 'red')
+    color2 = get_color(colors, 'green', 'dark-green')
+    color3 = get_color(colors, 'yellow', 'dark-yellow')
+    color4 = get_color(colors, 'blue', 'dark-blue')
+    color5 = get_color(colors, 'magenta', 'violet')
+    color6 = get_color(colors, 'cyan', 'teal', 'dark-cyan')
+    
+    # White/foreground
+    color7 = fg
+    
+    # Bright variants (9-14)
+    # Try to use Doom's "bright" or alternative colors, or lighten existing
+    color9 = get_color(colors, 'orange', 'red')
+    if color9 == color1:  # If no orange, lighten red
+        color9 = lighten_color(color1, 0.2)
+    
+    color10 = get_color(colors, 'teal', 'green')
+    if color10 == color2:  # If no teal, use green variant
+        color10 = get_color(colors, 'dark-green', color2)
+    
+    color11 = get_color(colors, 'yellow')
+    if 'dark-yellow' in colors and colors['dark-yellow'] != color3:
+        color11 = colors['yellow']  # Use bright yellow if dark-yellow was used
+    else:
+        color11 = lighten_color(color3, 0.15)
+    
+    color12 = get_color(colors, 'cyan', 'blue')
+    if color12 == color4 and 'cyan' in colors:
+        color12 = colors['cyan']
+    elif color12 == color4:
+        color12 = lighten_color(color4, 0.2)
+    
+    color13 = get_color(colors, 'violet', 'magenta')
+    if color13 == color5 and 'violet' in colors:
+        color13 = colors['violet']
+    elif color13 == color5:
+        color13 = lighten_color(color5, 0.2)
+    
+    color14 = get_color(colors, 'dark-cyan', 'cyan', 'teal')
+    if color14 == color6:
+        color14 = lighten_color(color6, 0.2)
+    
+    # Bright white
+    color15 = get_color(colors, 'base8', 'fg-alt', 'fg')
+    
+    # Build pywal theme
+    pywal_theme = {
+        "special": {
+            "background": bg,
+            "foreground": fg,
+            "cursor": cursor
+        },
+        "colors": {
+            "color0": color0,
+            "color1": color1,
+            "color2": color2,
+            "color3": color3,
+            "color4": color4,
+            "color5": color5,
+            "color6": color6,
+            "color7": color7,
+            "color8": color8,
+            "color9": color9,
+            "color10": color10,
+            "color11": color11,
+            "color12": color12,
+            "color13": color13,
+            "color14": color14,
+            "color15": color15
+        }
+    }
+    
+    return pywal_theme
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: doom-to-pywal <theme-file.el> [output-dir]")
+        sys.exit(1)
+    
+    theme_file = Path(sys.argv[1])
+    
+    if not theme_file.exists():
+        print(f"Error: Theme file not found: {theme_file}")
+        sys.exit(1)
+    
+    # Extract colors
+    colors = extract_colors(theme_file)
+    
+    if not colors:
+        print("Error: No colors found in theme file")
+        sys.exit(1)
+    
+    # Detect light/dark
+    is_light = is_light_theme(theme_file)
+    
+    # Convert to pywal format
+    pywal_theme = convert_to_pywal(colors, is_light)
+    
+    # Generate output filename
+    # doom-tokyo-night-theme.el -> doom-tokyo-night.json
+    theme_name = theme_file.stem.replace('-theme', '')
+    
+    # Add -light suffix if light theme
+    if is_light and not theme_name.endswith('-light'):
+        theme_name += '-light'
+    
+    # Determine output directory
+    if len(sys.argv) >= 3:
+        output_dir = Path(sys.argv[2])
+    else:
+        # Auto-detect based on light/dark
+        base_dir = Path.home() / '.config/wal/colorschemes'
+        output_dir = base_dir / ('light' if is_light else 'dark')
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / f"{theme_name}.json"
+    
+    # Write JSON
+    with open(output_file, 'w') as f:
+        json.dump(pywal_theme, f, indent=2)
+    
+    print(f"✓ Converted: {theme_file.name}")
+    print(f"  → {output_file}")
+    print(f"  Type: {'Light' if is_light else 'Dark'}")
+    print(f"  Colors extracted: {len(colors)}")
+
+
+if __name__ == '__main__':
+    main()

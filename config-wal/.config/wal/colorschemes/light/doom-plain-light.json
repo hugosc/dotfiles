@@ -1,0 +1,25 @@
+{
+  "special": {
+    "background": "#ffffff",
+    "foreground": "#282a2e",
+    "cursor": "#000000"
+  },
+  "colors": {
+    "color0": "#dfdfdf",
+    "color1": "#000000",
+    "color2": "#000000",
+    "color3": "#000000",
+    "color4": "#000000",
+    "color5": "#000000",
+    "color6": "#000000",
+    "color7": "#282a2e",
+    "color8": "#c5c8c6",
+    "color9": "#333333",
+    "color10": "#000000",
+    "color11": "#262626",
+    "color12": "#333333",
+    "color13": "#333333",
+    "color14": "#333333",
+    "color15": "#fafafa"
+  }
+}

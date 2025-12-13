@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Show centered dmenu with all available pywal themes
+# Returns selected theme name or exits if cancelled
+
+# Get dmenu colors
+DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
+
+# Get all available themes from pywal
+themes=$(wal --theme 2>&1 | grep '^ -' | sed 's/^ - //' | sort)
+
+# Show centered dmenu for theme selection
+selected=$(echo "$themes" | dmenu $DMENU_COLORS -c -i -l 20 -p "Select Theme:" -fn "Iosevka Nerd Font:size=10")
+
+# If user cancels or selects nothing, exit
+if [[ -z "$selected" ]]; then
+    exit 1
+fi
+
+# Return the selected theme
+echo "$selected"
