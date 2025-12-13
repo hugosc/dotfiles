@@ -16,37 +16,45 @@ def extract_colors(theme_file):
         content = f.read()
     
     colors = {}
+    references = {}
     
-    # Match color definitions like: (color-name '("#hex" ...
-    # Patterns to match:
-    # (bg         '("#1a1b26" nil       nil            ))
-    # (red        '("#f7768e" "#f7768e" "red"          ))
-    pattern = r'\((\w+(?:-\w+)?)\s+\'?\(?"(#[0-9a-fA-F]{6})"'
+    # First pass: Extract all hex color definitions and variable references
+    # Match: (color-name '("#hex" ...
+    hex_pattern = r'\((\w+(?:-\w+)?)\s+\'?\(?"(#[0-9a-fA-F]{6})"'
     
-    for match in re.finditer(pattern, content):
+    for match in re.finditer(hex_pattern, content):
         color_name = match.group(1)
         hex_value = match.group(2)
         colors[color_name] = hex_value.lower()
     
+    # Second pass: Extract variable references like (bg eg-bg)
+    # Match: (color-name variable-name) where variable-name is not a function/hex
+    ref_pattern = r'\((\w+(?:-\w+)?)\s+(\w+(?:-\w+)?)\)(?!\))'
+    
+    for match in re.finditer(ref_pattern, content):
+        color_name = match.group(1)
+        ref_name = match.group(2)
+        # Only store if it looks like a variable reference (not a Lisp keyword)
+        if ref_name not in ['t', 'nil', 'unspecified', 'if', 'cond', 'when', 'or', 'and', 'memq', 'pcase']:
+            references[color_name] = ref_name
+    
+    # Resolve references (follow chains like bg -> eg-bg -> #hex)
+    def resolve(name, depth=0):
+        if depth > 10:  # Prevent infinite loops
+            return None
+        if name in colors:
+            return colors[name]
+        if name in references:
+            return resolve(references[name], depth + 1)
+        return None
+    
+    # Copy resolved references into colors dict
+    for ref_name, target_name in references.items():
+        resolved = resolve(target_name)
+        if resolved and ref_name not in colors:
+            colors[ref_name] = resolved
+    
     return colors
-
-
-def is_light_theme(theme_file):
-    """Detect if theme is light variant."""
-    name = Path(theme_file).stem.lower()
-    
-    # Check filename
-    if 'light' in name or 'day' in name:
-        return True
-    
-    # Check for :background-mode in file
-    with open(theme_file, 'r') as f:
-        content = f.read()
-        if ':background-mode \'light' in content:
-            return True
-    
-    return False
-
 
 def lighten_color(hex_color, amount=0.3):
     """Lighten a hex color by a percentage."""
@@ -80,7 +88,7 @@ def get_color(colors, *names):
     return "#000000"  # fallback
 
 
-def convert_to_pywal(colors, is_light=False):
+def convert_to_pywal(colors):
     """Convert Doom colors to pywal 16-color palette."""
     
     # Special colors
@@ -88,18 +96,8 @@ def convert_to_pywal(colors, is_light=False):
     fg = get_color(colors, 'fg', 'base7')
     cursor = get_color(colors, 'cyan', 'blue', 'highlight')
     
-    # Base 16 colors
-    # Dark themes: black (base0) -> white (base8/fg)
-    # Light themes: white (bg) -> black (fg)
-    
-    if is_light:
-        # Light theme mapping
-        color0 = get_color(colors, 'base7', 'fg-alt', 'fg')  # Light gray (inverted for light)
-        color8 = get_color(colors, 'base5', 'grey', 'base4')  # Medium gray
-    else:
-        # Dark theme mapping
-        color0 = get_color(colors, 'base0', 'base1', 'bg-alt')  # Black/dark gray
-        color8 = get_color(colors, 'grey', 'base4', 'base5')  # Bright black (gray)
+    # Make color0 match background so dwm bar uses the right color
+    color0 = bg
     
     # Standard ANSI colors (1-6)
     color1 = get_color(colors, 'red')
@@ -111,6 +109,9 @@ def convert_to_pywal(colors, is_light=False):
     
     # White/foreground
     color7 = fg
+    
+    # Bright black (gray)
+    color8 = get_color(colors, 'grey', 'base4', 'base5')
     
     # Bright variants (9-14)
     # Try to use Doom's "bright" or alternative colors, or lighten existing
@@ -195,27 +196,19 @@ def main():
         print("Error: No colors found in theme file")
         sys.exit(1)
     
-    # Detect light/dark
-    is_light = is_light_theme(theme_file)
-    
     # Convert to pywal format
-    pywal_theme = convert_to_pywal(colors, is_light)
+    pywal_theme = convert_to_pywal(colors)
     
     # Generate output filename
     # doom-tokyo-night-theme.el -> doom-tokyo-night.json
     theme_name = theme_file.stem.replace('-theme', '')
     
-    # Add -light suffix if light theme
-    if is_light and not theme_name.endswith('-light'):
-        theme_name += '-light'
-    
-    # Determine output directory
+    # Determine output directory (always use dark directory)
     if len(sys.argv) >= 3:
         output_dir = Path(sys.argv[2])
     else:
-        # Auto-detect based on light/dark
         base_dir = Path.home() / '.config/wal/colorschemes'
-        output_dir = base_dir / ('light' if is_light else 'dark')
+        output_dir = base_dir / 'dark'
     
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{theme_name}.json"
@@ -226,7 +219,6 @@ def main():
     
     print(f"✓ Converted: {theme_file.name}")
     print(f"  → {output_file}")
-    print(f"  Type: {'Light' if is_light else 'Dark'}")
     print(f"  Colors extracted: {len(colors)}")
 
 

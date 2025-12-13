@@ -2,7 +2,7 @@
   "special": {
     "background": "#1b2b34",
     "foreground": "#d8dee9",
-    "cursor": "#6699cc"
+    "cursor": "#5fb3b3"
   },
   "colors": {
     "color0": "#1b2b34",
@@ -17,9 +17,9 @@
     "color9": "#f99157",
     "color10": "#5fb3b3",
     "color11": "#fad07a",
-    "color12": "#84add6",
+    "color12": "#5fb3b3",
     "color13": "#c594c5",
     "color14": "#7fc2c2",
-    "color15": "#000000"
+    "color15": "#d8dee9"
   }
 }

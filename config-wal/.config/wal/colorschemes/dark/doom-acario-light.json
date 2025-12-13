@@ -5,7 +5,7 @@
     "cursor": "#007687"
   },
   "colors": {
-    "color0": "#303030",
+    "color0": "#f5f5f9",
     "color1": "#d70000",
     "color2": "#005f00",
     "color3": "#af8700",
@@ -19,7 +19,7 @@
     "color11": "#bb9926",
     "color12": "#007687",
     "color13": "#8700af",
-    "color14": "#33919f",
+    "color14": "#d5faff",
     "color15": "#1e1e33"
   }
 }
