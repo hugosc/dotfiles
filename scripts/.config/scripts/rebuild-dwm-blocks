@@ -16,10 +16,10 @@ echo "✅ dwmblocks rebuilt and restarted"
 
 echo ""
 echo "📦 Rebuilding dwm..."
-cd ~/dwm
+cd ~/.local/src/dwm
 make clean
 make
-sudo make install
+make install
 
 echo "✅ dwm rebuilt"
 echo ""
