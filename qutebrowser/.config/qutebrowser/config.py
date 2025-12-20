@@ -104,7 +104,6 @@ c.colors.webpage.darkmode.algorithm = 'lightness-cielab'
 c.colors.webpage.darkmode.policy.images = 'never'
 
 # Blocking
-c.content.blocking.enabled = True
 config.set("content.webgl", False, "*")
 config.set("content.canvas_reading", False)
 config.set("content.geolocation", False)

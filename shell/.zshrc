@@ -1,13 +1,18 @@
+# Enable profiling (comment out for production use)
+zmodload zsh/zprof
+
 # Oh My Zsh settings
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
+
+# Speed optimization: skip compaudit security check (saves ~55ms)
+ZSH_DISABLE_COMPFIX=true
 
 
 # Set default editor
 export EDITOR=nvim
 
-# Initialize Rust/Cargo via rustup
-export PATH="$HOME/.cargo/bin:$PATH"
+# Initialize Rust/Cargo via rustup (PATH set below in consolidated section)
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
 # Source local secrets (API keys, SSH passwords, etc.)
@@ -16,11 +21,11 @@ if [[ -f "$HOME/.zshrc.local" ]]; then
   source "$HOME/.zshrc.local"
 fi
 
-# Default command for FZF (ripgrep)
-export FZF_DEFAULT_COMMAND='ag --hidden --ignore .git -l -g ""'
+# Default command for FZF (fd - set later, see line ~199)
 
-# Set ZSH theme
-ZSH_THEME="half-life"
+# Set ZSH theme (disabled - using Starship instead)
+# ZSH_THEME="half-life"
+ZSH_THEME=""
 
 # Set BAT theme
 export BAT_THEME=base16
@@ -46,12 +51,20 @@ else
   plugins=(git zsh-syntax-highlighting zsh-autosuggestions)
 fi
 
+# Speed optimization: cache completions (only rebuild once per day)
+autoload -Uz compinit
+if [[ -n ${ZDOTDIR}/.zcompdump(#qN.mh+24) ]]; then
+  compinit -C
+else
+  compinit
+fi
+
 # Source Oh My Zsh configuration
 source $ZSH/oh-my-zsh.sh
 
-# Load pywal colors for st on shell startup
-if [[ "$TERM" == "st-256color" ]] && [[ -f ~/.st-init ]]; then
-  source ~/.st-init
+# Load pywal colors for st on shell startup (optimized - direct cat)
+if [[ "$TERM" == "st-256color" ]] && [[ -f ~/.cache/wal/sequences ]]; then
+  cat ~/.cache/wal/sequences 2>/dev/null
 fi
 
 
@@ -216,12 +229,8 @@ function y() {
   rm -f -- "$tmp"
 }
 
-# Path additions (pipx and tmuxifier)
-# Created by `pipx` on 2024-12-20 04:50:48
-export PATH="$PATH:/home/croc/.local/bin"
-# export PATH="$HOME/.tmuxifier/bin:$PATH"
-
-export PATH="$PATH:/home/croc/.config/emacs/bin"
+# Path additions - consolidated for efficiency
+export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$HOME/.config/emacs/bin:$HOME/.npm-global/bin:/home/croc/.opencode/bin:$JAVA_HOME/bin:$PATH"
 
 # Enable fzf and zoxide (thefuck moved to lazy load)
 eval "$(fzf --zsh)"
@@ -255,17 +264,11 @@ npm() {
 
 
 
-export PATH="$PATH:/home/croc/.npm-global/bin"
-
-# opencode
-export PATH=/home/croc/.opencode/bin:$PATH
-
-# Initialize Starship prompt
-eval "$(~/.local/bin/starship init zsh)"
-
-
-# System tools (jdtls, etc.) use Java 21
-export PATH=$JAVA_HOME/bin:$PATH
-
-# Your project uses Java 17
+# System tools use Java 21
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+
+# Initialize Starship prompt (done last for clean prompt)
+eval "$(starship init zsh)"
+
+# Show profiling results (comment out for production)
+zprof
