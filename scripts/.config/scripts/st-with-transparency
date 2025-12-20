@@ -1,22 +1,17 @@
 #!/bin/bash
-# Wrapper script to launch st with appropriate alpha transparency
-# Reads /tmp/transparency-state to determine opacity
+# ST launcher with transparency state inheritance (optimized)
 
 STATE_FILE="/tmp/transparency-state"
 
-# Read current state (default to transparent)
-if [ -f "$STATE_FILE" ]; then
-  current_state=$(cat "$STATE_FILE")
-else
-  current_state="transparent"
+# Initialize state only if missing (single check)
+if [ ! -f "$STATE_FILE" ]; then
+    PERSISTENT="$HOME/.cache/transparency-state"
+    if [ -f "$PERSISTENT" ]; then
+        cp "$PERSISTENT" "$STATE_FILE"
+    else
+        echo "transparent" | tee "$STATE_FILE" "$PERSISTENT" > /dev/null
+    fi
 fi
 
-# Set alpha based on state
-if [ "$current_state" = "transparent" ]; then
-  alpha="0.85"
-else
-  alpha="1.0"
-fi
-
-# Launch st with the appropriate alpha flag
-exec st -A "$alpha" "$@"
+# Read state and launch (single file read, single conditional)
+[ "$(cat "$STATE_FILE")" = "opaque" ] && exec st -A 1.0 "$@" || exec st -A 0.85 "$@"

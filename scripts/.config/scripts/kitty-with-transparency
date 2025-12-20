@@ -1,7 +1,17 @@
 #!/bin/bash
-# Fast kitty launcher with transparency state
+# Fast kitty launcher with transparency state (optimized)
 
-# Read state (default transparent) and launch in one conditional
-[ -f /tmp/transparency-state ] && [ "$(cat /tmp/transparency-state)" = "opaque" ] && \
-  exec kitty -o background_opacity=1.0 "$@" || \
-  exec kitty -o background_opacity=0.85 "$@"
+STATE_FILE="/tmp/transparency-state"
+
+# Initialize state only if missing (inline for speed)
+if [ ! -f "$STATE_FILE" ]; then
+    PERSISTENT="$HOME/.cache/transparency-state"
+    if [ -f "$PERSISTENT" ]; then
+        cp "$PERSISTENT" "$STATE_FILE"
+    else
+        echo "transparent" | tee "$STATE_FILE" "$PERSISTENT" > /dev/null
+    fi
+fi
+
+# Read state and launch (single file read, single conditional)
+[ "$(cat "$STATE_FILE")" = "opaque" ] && exec kitty -o background_opacity=1.0 "$@" || exec kitty -o background_opacity=0.85 "$@"

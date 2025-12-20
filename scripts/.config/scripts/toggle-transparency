@@ -3,14 +3,20 @@
 # Optimized for speed
 
 STATE_FILE="/tmp/transparency-state"
+PERSISTENT_STATE="$HOME/.cache/transparency-state"
+
+# Initialize state file if it doesn't exist
+[ ! -f "$STATE_FILE" ] && ~/.config/scripts/init-transparency-state
 
 # Toggle state and set values in one go
 if [ -f "$STATE_FILE" ] && [ "$(cat "$STATE_FILE")" = "transparent" ]; then
   echo "opaque" > "$STATE_FILE"
+  echo "opaque" > "$PERSISTENT_STATE"
   kitty_opacity=1.0
   emacs_alpha=100
 else
   echo "transparent" > "$STATE_FILE"
+  echo "transparent" > "$PERSISTENT_STATE"
   kitty_opacity=0.85
   emacs_alpha=85
 fi
@@ -22,5 +28,8 @@ done 2>/dev/null
 
 # Apply to emacs (async)
 emacsclient -e "(dolist (frame (frame-list)) (set-frame-parameter frame 'alpha-background $emacs_alpha))" &>/dev/null &
+
+# Apply to all ST instances via SIGUSR1 (triggers reload which reads state file)
+pkill -USR1 '^st$' &>/dev/null &
 
 wait

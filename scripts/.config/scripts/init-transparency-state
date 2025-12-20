@@ -1,0 +1,15 @@
+#!/bin/bash
+# Initialize transparency state on login (optimized for speed)
+
+TEMP_STATE="/tmp/transparency-state"
+PERSISTENT_STATE="$HOME/.cache/transparency-state"
+
+# Fast path: if temp exists, we're done
+[ -f "$TEMP_STATE" ] && exit 0
+
+# Restore from persistent or create default
+if [ -f "$PERSISTENT_STATE" ]; then
+    cp "$PERSISTENT_STATE" "$TEMP_STATE"
+else
+    echo "transparent" | tee "$TEMP_STATE" "$PERSISTENT_STATE" > /dev/null
+fi
