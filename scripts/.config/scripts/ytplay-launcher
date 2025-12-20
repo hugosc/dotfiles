@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# ytplay-launcher - Launch ytplay in a centered floating terminal (like wallpaper picker)
+
+export DISPLAY=:0
+
+# Load pywal colors for fzf
+[ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
+
+# Calculate center position
+read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
+TERM_W=$((160 * 8)) # approximate width in pixels (chars * avg char width)
+TERM_H=$((30 * 14)) # approximate height in pixels (lines * font size)
+OFFSET_X=$(((SCREEN_W - TERM_W) / 2))
+OFFSET_Y=$(((SCREEN_H - TERM_H) / 2))
+
+# Launch st with centered geometry, apply pywal sequences
+# Title must be "fzf" to match dwm rule: {"fzfmenu",NULL, "fzf", 0, 1, 1, 1, -1}
+st -f 'Liberation Mono:pixelsize=14' \
+   -c fzfmenu \
+   -n fzfmenu \
+   -T fzf \
+   -g "160x30+${OFFSET_X}+${OFFSET_Y}" \
+   -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec /home/croc/.config/scripts/ytplay'
