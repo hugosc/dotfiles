@@ -11,17 +11,21 @@ fi
 
 # Get full list once (this is the slowest operation ~1.6s for 750 items)
 full_list=$(cliphist list 2>/dev/null)
+text_list="$full_list"
 
-# Fast filtering with grep
-image_list=$(echo "$full_list" | grep -a "\[\[.*binary data.*\]\]")
-text_list=$(echo "$full_list" | grep -av "\[\[.*binary data.*\]\]")
+# Check if we have images in the hist directory (used by imgcliphist)
+HIST_DIR=~/.cache/hist
+has_images=false
+if [[ -d "$HIST_DIR" ]] && [[ -n "$(ls -A "$HIST_DIR"/*.png 2>/dev/null)" ]]; then
+    has_images=true
+fi
 
 # Show choice menu if we have both text and images
-if [[ -n "$text_list" ]] && [[ -n "$image_list" ]]; then
+if [[ -n "$text_list" ]] && [[ "$has_images" == "true" ]]; then
     choice=$(printf "Text\nImages" | dmenu $DMENU_COLORS -c -l 2 -p "Clipboard:" -i -fn "Iosevka Nerd Font:size=10")
 else
     # If only one type exists, skip the menu
-    choice=$([[ -n "$image_list" ]] && echo "Images" || echo "Text")
+    choice=$([[ "$has_images" == "true" ]] && echo "Images" || echo "Text")
 fi
 
 case "$choice" in
