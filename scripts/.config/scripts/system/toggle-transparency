@@ -6,7 +6,7 @@ STATE_FILE="/tmp/transparency-state"
 PERSISTENT_STATE="$HOME/.cache/transparency-state"
 
 # Initialize state file if it doesn't exist
-[ ! -f "$STATE_FILE" ] && ~/.config/scripts/init-transparency-state
+[ ! -f "$STATE_FILE" ] && ~/.config/scripts/system/init-transparency-state
 
 # Toggle state and set values in one go
 if [ -f "$STATE_FILE" ] && [ "$(cat "$STATE_FILE")" = "transparent" ]; then

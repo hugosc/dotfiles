@@ -3,7 +3,7 @@
 # Restarts it if it crashes
 
 export DISPLAY="${DISPLAY:-:0}"
-MONITOR_SCRIPT="$HOME/.config/scripts/clipboard-monitor"
+MONITOR_SCRIPT="$HOME/.config/scripts/clipboard/clipboard-monitor"
 
 while true; do
     # Check specifically for clipboard-monitor (not watchdog)
