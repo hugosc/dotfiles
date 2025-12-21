@@ -1,7 +1,14 @@
 #!/bin/bash
 export DISPLAY=:0
-st -c "neofetch" -n "neofetch" -f "Iosevka Term:size=10" -T "Welcome" -e sh -c 'neofetch; zsh' &
-sleep 0.2
-WINDOW_ID=$(xdotool search --class "neofetch" 2>/dev/null | head -1)
-[ -n "$WINDOW_ID" ] && xdotool windowsize "$WINDOW_ID" 571 426 && xdotool windowmove "$WINDOW_ID" 30 40
+st -c "neofetch" -n "neofetch" -f "Iosevka Term:size=10" -T "Welcome" -e sh -c 'printf "\n"; neofetch; tput civis; read -r' &
+
+# Wait for window to exist without sleep
+for i in {1..50}; do
+    WINDOW_ID=$(xdotool search --class "neofetch" 2>/dev/null | tail -1)
+    [ -n "$WINDOW_ID" ] && break
+    sleep 0.05
+done
+
+# Position window in top left
+[ -n "$WINDOW_ID" ] && xdotool windowsize "$WINDOW_ID" 571 420 && xdotool windowmove "$WINDOW_ID" 30 40
 
