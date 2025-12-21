@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Event-driven WiFi updates for dwmblocks (NetworkManager).
+# Triggers refresh when NetworkManager reports changes.
+
+DWM_BLOCKS_SIGNAL=16
+
+nmcli monitor 2>/dev/null | while read -r _line; do
+	pkill -RTMIN+"$DWM_BLOCKS_SIGNAL" dwmblocks 2>/dev/null
+done

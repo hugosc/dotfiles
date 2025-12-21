@@ -3,6 +3,8 @@
 #include<string.h>
 #include<unistd.h>
 #include<signal.h>
+#include<time.h>
+
 #ifndef NO_X
 #include<X11/Xlib.h>
 #endif
@@ -17,6 +19,7 @@
 #define CMDLENGTH		120
 #define MIN( a, b ) ( ( a < b) ? a : b )
 #define STATUSLENGTH (LENGTH(blocks) * CMDLENGTH + 1)
+#define STATUSDELIMLEN (delimLen + 1)
 
 typedef struct {
 	char* icon;
@@ -27,11 +30,10 @@ typedef struct {
 #ifndef __OpenBSD__
 void dummysighandler(int num);
 #endif
-void sighandler(int num);
-void getcmds(int time);
+void buttonhandler(int signum, siginfo_t *si, void *ucontext);
+void getcmds(time_t now);
 void getsigcmds(unsigned int signal);
 void setupsignals();
-void sighandler(int signum);
 int getstatus(char *str, char *last);
 void statusloop();
 void termhandler(int sig);
@@ -53,7 +55,8 @@ static void (*writestatus) () = pstdout;
 static char statusbar[LENGTH(blocks)][CMDLENGTH] = {0};
 static char statusstr[2][STATUSLENGTH];
 static int statusContinue = 1;
-static int returnStatus = 0;
+static unsigned int blockButton = 0;
+static time_t lastRun[LENGTH(blocks)] = {0};
 
 //opens process *cmd and stores output in *output
 void getcmd(const Block *block, char *output)
@@ -61,33 +64,53 @@ void getcmd(const Block *block, char *output)
 	//make sure status is same until output is ready
 	char tempstatus[CMDLENGTH] = {0};
 	strcpy(tempstatus, block->icon);
+	
+	// Set BLOCK_BUTTON environment variable
+	char button_str[16];
+	snprintf(button_str, sizeof(button_str), "%d", blockButton);
+	setenv("BLOCK_BUTTON", button_str, 1);
+	
 	FILE *cmdf = popen(block->command, "r");
 	if (!cmdf)
 		return;
 	int i = strlen(block->icon);
-	fgets(tempstatus+i, CMDLENGTH-i-delimLen, cmdf);
+	int reserved = (delim[0] != '\0') ? (delimLen + 2) : 1; /* delim + signal + NUL (or just NUL) */
+	int maxlen = CMDLENGTH - i - reserved;
+	if (maxlen > 0)
+		fgets(tempstatus+i, maxlen, cmdf);
 	i = strlen(tempstatus);
 	//if block and command output are both not empty
 	if (i != 0) {
 		//only chop off newline if one is present at the end
 		i = tempstatus[i-1] == '\n' ? i-1 : i;
 		if (delim[0] != '\0') {
-			strncpy(tempstatus+i, delim, delimLen);
+			memcpy(tempstatus+i, delim, delimLen);
+			i += delimLen;
+			tempstatus[i++] = (char)block->signal;
 		}
-		else
-			tempstatus[i++] = '\0';
+		tempstatus[i] = '\0';
 	}
 	strcpy(output, tempstatus);
 	pclose(cmdf);
+	blockButton = 0;  // Reset after command execution
 }
 
-void getcmds(int time)
+void getcmds(time_t now)
 {
 	const Block* current;
 	for (unsigned int i = 0; i < LENGTH(blocks); i++) {
 		current = blocks + i;
-		if ((current->interval != 0 && time % current->interval == 0) || time == -1)
-			getcmd(current,statusbar[i]);
+		if (now == (time_t)-1) {
+			getcmd(current, statusbar[i]);
+			lastRun[i] = time(NULL);
+			continue;
+		}
+		if (current->interval == 0)
+			continue;
+		if (lastRun[i] == 0 || now - lastRun[i] >= (time_t)current->interval) {
+			getcmd(current, statusbar[i]);
+			lastRun[i] = now;
+		}
 	}
 }
 
@@ -101,19 +124,25 @@ void getsigcmds(unsigned int signal)
 	}
 }
 
+
 void setupsignals()
 {
 #ifndef __OpenBSD__
-	    /* initialize all real time signals with dummy handler */
-    for (int i = SIGRTMIN; i <= SIGRTMAX; i++)
-        signal(i, dummysighandler);
+	/* initialize all real time signals with dummy handler */
+	for (int i = SIGRTMIN; i <= SIGRTMAX; i++)
+		signal(i, dummysighandler);
 #endif
+
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = buttonhandler;
+	sa.sa_flags = SA_SIGINFO;
+	sigemptyset(&sa.sa_mask);
 
 	for (unsigned int i = 0; i < LENGTH(blocks); i++) {
 		if (blocks[i].signal > 0)
-			signal(SIGMINUS+blocks[i].signal, sighandler);
+			sigaction(SIGMINUS + blocks[i].signal, &sa, NULL);
 	}
-
 }
 
 int getstatus(char *str, char *last)
@@ -123,7 +152,7 @@ int getstatus(char *str, char *last)
 	for (unsigned int i = 0; i < LENGTH(blocks); i++)
 		strcat(str, statusbar[i]);
 	int len = strlen(str);
-	int dlen = strlen(delim);
+	int dlen = (delim[0] != '\0') ? (int)delimLen + 1 : 0; /* visible delim + signal char */
 	if (len >= dlen && dlen > 0) {
 		str[len - dlen] = '\0';
 	}
@@ -164,14 +193,14 @@ void pstdout()
 void statusloop()
 {
 	setupsignals();
-	int i = 0;
-	getcmds(-1);
+	getcmds((time_t)-1);
 	while (1) {
-		getcmds(i++);
+		time_t now = time(NULL);
+		getcmds(now);
 		writestatus();
 		if (!statusContinue)
 			break;
-		sleep(1.0);
+		sleep(1);
 	}
 }
 
@@ -183,9 +212,11 @@ void dummysighandler(int signum)
 }
 #endif
 
-void sighandler(int signum)
+void buttonhandler(int signum, siginfo_t *si, void *ucontext)
 {
-	getsigcmds(signum-SIGPLUS);
+	(void)ucontext;
+	blockButton = si ? (unsigned int)si->si_value.sival_int : 0;
+	getsigcmds(signum - SIGPLUS);
 	writestatus();
 }
 
@@ -207,7 +238,6 @@ int main(int argc, char** argv)
 		return 1;
 #endif
 	delimLen = MIN(delimLen, strlen(delim));
-	delim[delimLen++] = '\0';
 	signal(SIGTERM, termhandler);
 	signal(SIGINT, termhandler);
 	statusloop();

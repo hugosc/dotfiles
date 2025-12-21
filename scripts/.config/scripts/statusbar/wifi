@@ -1,25 +1,20 @@
 #!/bin/sh
 
+TERMINAL=${TERMINAL:-st}
+
 # Try to get wifi info using nmcli first (most reliable)
 if command -v nmcli >/dev/null 2>&1; then
-	STATUS=$(nmcli -t -f STATE g 2>/dev/null)
-	
-	if [ "$STATUS" != "connected" ] && [ "$STATUS" != "connecting" ]; then
-		echo "󰤭"
+	# Single nmcli call with timeout (avoids stalling dwmblocks)
+	LINE=$(timeout 1 nmcli -t -f ACTIVE,SSID,SIGNAL dev wifi list --rescan no 2>/dev/null | awk -F: '$1=="yes"{print; exit}')
+
+	if [ -z "$LINE" ]; then
+		echo "󰈭"
 		exit 0
 	fi
-	
-	# Get SSID and signal strength - use single nmcli call for efficiency
-	SSID=$(nmcli -t -f name c show --active 2>/dev/null | head -1)
-	
-	if [ -z "$SSID" ]; then
-		echo "󰤭"
-		exit 0
-	fi
-	
-	# Only query signal if SSID exists
-	SIGNAL=$(nmcli -t -f signal dev wifi list --rescan no 2>/dev/null | head -1)
-	
+
+	SSID=$(echo "$LINE" | awk -F: '{print $2}')
+	SIGNAL=$(echo "$LINE" | awk -F: '{print $3}')
+
 	# Determine wifi icon based on signal strength
 	if [ -n "$SIGNAL" ]; then
 		if [ "$SIGNAL" -ge 80 ]; then
@@ -34,11 +29,11 @@ if command -v nmcli >/dev/null 2>&1; then
 	else
 		ICON="󰤥"
 	fi
-	
+
 	echo "$ICON $SSID"
 else
 	# Fallback to iw if nmcli is not available
-	WIFI_INTERFACE=$(iw dev 2>/dev/null | grep "Interface" | awk '{print $2}' | head -1)
+	WIFI_INTERFACE=$(timeout 1 iw dev 2>/dev/null | grep "Interface" | awk '{print $2}' | head -1)
 	
 	if [ -z "$WIFI_INTERFACE" ]; then
 		echo "󰤭"
@@ -46,7 +41,7 @@ else
 	fi
 	
 	# Check connection status - single iw call
-	IW_OUTPUT=$(iw dev "$WIFI_INTERFACE" link 2>/dev/null)
+	IW_OUTPUT=$(timeout 1 iw dev "$WIFI_INTERFACE" link 2>/dev/null)
 	SSID=$(echo "$IW_OUTPUT" | grep "SSID:" | awk '{print $NF}')
 	SIGNAL=$(echo "$IW_OUTPUT" | grep "signal:" | awk '{print $2}' | sed 's/,//')
 	

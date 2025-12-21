@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# Volume status script for dwmblocks
+# Uses PulseAudio/PipeWire with pactl
+
+# Get volume and mute status
+VOLUME=$(pactl get-sink-volume @DEFAULT_SINK@ | grep -oP '\d+(?=%)' | head -1)
+MUTE=$(pactl get-sink-mute @DEFAULT_SINK@ | grep -oP '(?<=Mute: )\w+')
+
+# Choose icon based on volume level and mute status
+if [ "$MUTE" = "yes" ]; then
+    ICON="󰖁"
+elif [ "$VOLUME" -eq 0 ]; then
+    ICON="󰖁"
+elif [ "$VOLUME" -lt 33 ]; then
+    ICON="󰕿"
+elif [ "$VOLUME" -lt 66 ]; then
+    ICON="󰖀"
+else
+    ICON="󰕾"
+fi
+
+echo "$ICON $VOLUME%"
+
+# Click handler
+case $BLOCK_BUTTON in
+    1) pavucontrol ;;  # Left click: open pavucontrol
+    3) pactl set-sink-mute @DEFAULT_SINK@ toggle ;;  # Right click: toggle mute
+esac

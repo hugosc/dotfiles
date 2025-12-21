@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Event-driven volume updates for dwmblocks.
+# Listens to PulseAudio/PipeWire events and triggers the volume block refresh.
+
+DWM_BLOCKS_SIGNAL=14
+
+pactl subscribe 2>/dev/null | while read -r line; do
+	case "$line" in
+		*"on sink"*|*"on server"*)
+			pkill -RTMIN+"$DWM_BLOCKS_SIGNAL" dwmblocks 2>/dev/null
+			;;
+	esac
+done

@@ -1,10 +1,12 @@
 #!/bin/sh
 
 # Weather script for dwmblocks using wttr.in
-# Caches result for 5 minutes to avoid excessive API calls
+# Caches result for 20 minutes to avoid excessive API calls
 
 CACHE_FILE="/tmp/dwmblocks_weather_cache"
 CACHE_AGE=1200  # 20 minutes in seconds
+
+TERMINAL=${TERMINAL:-st}
 
 # Check if cache exists and is fresh
 if [ -f "$CACHE_FILE" ]; then
@@ -18,19 +20,22 @@ if [ -f "$CACHE_FILE" ]; then
     fi
 fi
 
-# Fetch weather data - temp and condition
-TEMP=$(timeout 3 curl -s "https://wttr.in/?format=%t" 2>/dev/null)
-CONDITION=$(timeout 3 curl -s "https://wttr.in/?format=%C" 2>/dev/null)
+# Fetch weather data (single request)
+WEATHER=$(curl -fsS --max-time 3 "https://wttr.in/?format=%t+%C" 2>/dev/null)
 
-if [ -z "$TEMP" ] || [ -z "$CONDITION" ]; then
-    # Output nothing when weather fetch fails (consistent with other scripts)
+if [ -z "$WEATHER" ]; then
+    # If fetch fails, keep last known value if available
+    if [ -f "$CACHE_FILE" ]; then
+        cat "$CACHE_FILE"
+        exit 0
+    fi
+    echo "N/A"
     exit 0
 fi
 
 # Remove + sign from temperature
-TEMP=$(echo "$TEMP" | sed 's/+//')
-
-PARSED="$TEMP $CONDITION"
+WEATHER=$(echo "$WEATHER" | sed 's/+//')
+PARSED=$(echo "$WEATHER" | tr '+' ' ')
 
 # Cache the result
 echo "$PARSED" > "$CACHE_FILE" 2>/dev/null
@@ -38,5 +43,5 @@ echo "$PARSED" > "$CACHE_FILE" 2>/dev/null
 echo "$PARSED"
 
 case $BLOCK_BUTTON in
-    1) setsid -f "$TERMINAL" -e "curl -s https://wttr.in/ | less -R" ;;
+    1) setsid -f "$TERMINAL" -e sh -c "curl -s https://wttr.in/ | less -R" ;;
 esac
