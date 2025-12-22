@@ -1,0 +1,25 @@
+#!/bin/sh
+# Launch or attach to music player in dedicated tmux session
+
+SESSION_NAME="music"
+
+# Check if we're already inside a tmux session
+if [ -n "$TMUX" ]; then
+    # We're inside tmux, switch to the music session
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        tmux switch-client -t "$SESSION_NAME"
+    else
+        # Create new session in the background and switch to it
+        tmux new-session -d -s "$SESSION_NAME" ncspot
+        tmux switch-client -t "$SESSION_NAME"
+    fi
+else
+    # We're not inside tmux, attach normally
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        # Session exists, attach to it in a terminal
+        st -e tmux attach-session -t "$SESSION_NAME"
+    else
+        # Create new session and attach
+        st -e tmux new-session -s "$SESSION_NAME" ncspot
+    fi
+fi
