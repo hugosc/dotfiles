@@ -38,6 +38,6 @@ case "$choice" in
         ;;
     Images)
         # Use fzfub-based image picker
-        ~/.config/scripts/imgcliphist sel &
+        ~/.config/scripts/images-photos-wallpapers/imgcliphist sel &
         ;;
 esac
