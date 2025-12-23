@@ -27,7 +27,7 @@ c14 = wal['colors'].get('color14', '#808080')
 
 # Minimal color config
 c.colors.statusbar.normal.bg = "#00000000"
-c.colors.statusbar.command.bg = "#00000000"
+c.colors.statusbar.command.bg = bg
 c.colors.statusbar.command.fg = fg
 c.colors.statusbar.normal.fg = c14
 c.colors.statusbar.url.fg = c13
@@ -64,7 +64,7 @@ config.load_autoconfig()
 
 # Search engines
 c.url.searchengines = {
-    'DEFAULT': 'https://duckduckgo.com/?q={}',
+    'DEFAULT': 'https://www.google.com/search?q={}',
     '!g': 'https://www.google.com/search?q={}',
     '!sx': 'https://searx.be/search?q={}',
     '!aw': 'https://wiki.archlinux.org/?search={}',
@@ -76,6 +76,7 @@ c.url.searchengines = {
 c.auto_save.session = True
 
 # Keybindings
+config.unbind('d')
 config.bind('=', 'cmd-set-text -s :open')
 config.bind('h', 'history')
 config.bind('cs', 'cmd-set-text -s :config-source')
@@ -102,8 +103,3 @@ c.url.start_pages = ['about:blank']
 c.colors.webpage.darkmode.enabled = True
 c.colors.webpage.darkmode.algorithm = 'lightness-cielab'
 c.colors.webpage.darkmode.policy.images = 'never'
-
-# Blocking
-config.set("content.webgl", False, "*")
-config.set("content.canvas_reading", False)
-config.set("content.geolocation", False)

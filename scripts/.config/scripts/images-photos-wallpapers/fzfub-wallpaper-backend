@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Wrapper script to pick and save pywal backend preference
+# Called from fzfub wallpaper menu with ctrl-b
+
+# Call the backend picker
+backend=$(/home/croc/dotfiles/scripts/.config/scripts/images-photos-wallpapers/wallpaper-backend-picker)
+
+# If user cancelled, exit
+if [[ -z "$backend" ]]; then
+    exit 0
+fi
+
+# Ensure config directory exists
+mkdir -p ~/.config/wal
+
+# Save the selected backend to config file
+echo "$backend" > ~/.config/wal/backend
+
+# Send notification
+notify-send "Pywal Backend" "Backend set to: $backend" -t 3000

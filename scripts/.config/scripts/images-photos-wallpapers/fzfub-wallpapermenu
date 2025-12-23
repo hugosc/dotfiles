@@ -13,6 +13,13 @@ WPFOLDER=~/Pictures/wallpaper/    # wallpaper folder
 PW16SCRIPT=~/scripts/pywal16      # pywal16 post-run script
 TEMPIMG=~/Pictures/wallpaper/temp # save as a temporary image for restoration on restart
 
+# Load backend preference (default to colorz if not set)
+if [ -f ~/.config/wal/backend ]; then
+    WAL_BACKEND=$(cat ~/.config/wal/backend)
+else
+    WAL_BACKEND="colorz"
+fi
+
 case "$#" in
 0)
   # Load all Xresources at once for better performance
@@ -35,7 +42,7 @@ case "$#" in
 1)
    # Dark mode - default behavior when called with just wallpaper path
    feh --bg-fill "$1" &&
-     wal -i "$1" --backend colorz &&
+     wal -i "$1" --backend "$WAL_BACKEND" &&
      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
      "$PW16SCRIPT" &&
@@ -65,7 +72,7 @@ case "$#" in
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
   elif [[ "$2" == "light" ]]; then
     # Generate light colors, darken them slightly with optimized combined script
-    wal -i "$1" -l &&
+    wal -i "$1" -l --backend "$WAL_BACKEND" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
@@ -74,7 +81,7 @@ case "$#" in
     nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
   elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
-    wal -i "$1" &&
+    wal -i "$1" --backend "$WAL_BACKEND" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10 &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
@@ -83,7 +90,7 @@ case "$#" in
     nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
    elif [[ "$2" == "dark" ]]; then
      # Generate dark colors - regenerate templates to ensure no darkened values remain
-     wal -i "$1" &&
+     wal -i "$1" --backend "$WAL_BACKEND" &&
        ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
        ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
        "$PW16SCRIPT" &&

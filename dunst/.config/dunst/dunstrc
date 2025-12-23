@@ -14,8 +14,8 @@
     horizontal_padding = 8
     text_icon_padding = 0
     frame_width = 2
-    frame_color = "#95986B"
-    separator_color = "#979789"
+    frame_color = "#90815f"
+    separator_color = "#60594f"
     sort = yes
     idle_threshold = 120
     font = monospace 10
@@ -32,16 +32,16 @@
     show_indicators = yes
 
 [urgency_low]
-    background = "#0e1209"
-    foreground = "#d9d8c5"
+    background = "#0b0906"
+    foreground = "#afaca7"
     timeout = 10
 
 [urgency_normal]
-    background = "#0e1209"
-    foreground = "#d9d8c5"
+    background = "#0b0906"
+    foreground = "#afaca7"
     timeout = 10
 
 [urgency_critical]
-    background = "#5D643B"
-    foreground = "#d9d8c5"
+    background = "#69635c"
+    foreground = "#afaca7"
     timeout = 0
