@@ -1,46 +1,233 @@
 #!/usr/bin/env bash
 
-# Convert MP4 recording to high-quality WebM (VP9)
-# Run this in background when laptop is idle
-# Usage: webm-convert recording.mp4
-# Output: recording.webm
+# Convert MP4 recording to WebM (VP9)
+# Default: fast + good quality using Intel VAAPI if available.
+# Fallback: CPU libvpx-vp9 with `--cpu`.
+#
+# Usage:
+#   webm-convert [--cpu] recording.mp4
+# Output:
+#   recording.webm
 
-if [[ -z "$1" ]]; then
-	echo "Usage: $0 <input.mp4>"
-	echo "Example: $0 screenrecord_20250128_120530.mp4"
+set -euo pipefail
+
+usage() {
+	cat <<'EOF'
+Usage: webm-convert [--cpu|--qsv|--vaapi|--fast] <input.mp4>
+
+Options:
+  --cpu     Force CPU VP9 encode (libvpx-vp9). Slowest, best compression.
+  --fast    Faster CPU VP9 encode (bigger files).
+  --qsv     Force Intel QSV VP9 encode if available.
+  --vaapi   Force Intel VAAPI VP9 encode if available.
+EOF
+}
+
+
+mode="auto"
+input=""
+
+case "${1:-}" in
+	--cpu)
+		mode="cpu"
+		shift
+		;;
+	--fast)
+		mode="fast"
+		shift
+		;;
+	--qsv)
+		mode="qsv"
+		shift
+		;;
+	--vaapi)
+		mode="vaapi"
+		shift
+		;;
+	-h|--help)
+		usage
+		exit 0
+		;;
+	"")
+		usage
+		exit 1
+		;;
+esac
+
+input="${1:-}"
+if [[ -z "$input" ]]; then
+	usage
 	exit 1
 fi
 
-input="$1"
 if [[ ! -f "$input" ]]; then
-	echo "Error: File not found: $input"
+	echo "Error: File not found: $input" >&2
 	exit 1
 fi
 
-# Output same name but .webm
 output="${input%.*}.webm"
-
 if [[ -f "$output" ]]; then
-	echo "Warning: $output already exists, skipping"
+	echo "Warning: $output already exists, skipping" >&2
 	exit 1
 fi
 
-echo "Converting to WebM: $input → $output"
-echo "This will take a while (VP9 is slower). You can close this terminal."
+echo "Converting to WebM (VP9): $input → $output"
 
-# VP9 encoding with libvpx-vp9 (CPU) for best quality/compression
-# Uses nice/ionice to keep CPU impact low when run in background
+have_encoder() {
+	# Encoder list format:
+	#   " V....D vp9_vaapi            VP9 (VAAPI) (codec vp9)"
+	# The encoder name is the 2nd whitespace-delimited field.
+	ffmpeg -hide_banner -encoders 2>/dev/null | awk '{print $2}' | grep -Fxq "$1"
+}
 
-nice -n 10 ionice -c3 ffmpeg -i "$input" \
-	-c:v libvpx-vp9 \
-	-crf 36 \
-	-b:v 0 \
-	-speed 4 \
-	-tile-columns 4 \
-	-threads 8 \
-	-row-mt 1 \
-	-auto-alt-ref 1 \
-	-lag-in-frames 25 \
-	-c:a libopus \
-	-b:a 96k \
-	"$output" && echo "✓ Done: $output"
+run_vaapi_vp9() {
+	VAAPI_DEVICE="${VAAPI_DEVICE:-/dev/dri/renderD128}"
+	FFREPORT=file=/tmp/webm-convert.ffreport:level=32 \
+	nice -n 10 ionice -c3 ffmpeg -hide_banner -y -stats \
+		-fflags +genpts \
+
+		-i "$input" \
+		-vf 'format=nv12,hwupload' \
+		-c:v vp9_vaapi \
+		-qp 28 \
+		-c:a libopus \
+		-b:a 96k \
+		-vbr 1 \
+		"$output"
+}
+
+run_qsv_vp9() {
+	# QSV needs a working MFX session; explicitly initialize it.
+	# quality: bigger=better quality, larger files.
+	FFREPORT=file=/tmp/webm-convert.ffreport:level=32 \
+	nice -n 10 ionice -c3 ffmpeg -hide_banner -y \
+		-init_hw_device qsv=qsv:hw \
+		-filter_hw_device qsv \
+		-fflags +genpts \
+		-i "$input" \
+		-c:v vp9_qsv \
+		-global_quality 28 \
+		-c:a libopus \
+		-b:a 96k \
+		-vbr 1 \
+		"$output"
+}
+
+run_cpu_vp9() {
+	# Small-files preset: slow, but best compression.
+	# Notes:
+	# - lower CRF => better quality/larger file
+	# - speed 0/1 compresses best; 0 is very slow
+	# - enable 2-pass to hit smaller sizes more consistently
+	local passlog="${output}.passlog"
+
+	nice -n 10 ionice -c3 ffmpeg -hide_banner -y -stats \
+		-fflags +genpts \
+		-i "$input" \
+		-c:v libvpx-vp9 \
+		-b:v 0 \
+		-crf 34 \
+		-speed 1 \
+		-tile-columns 2 \
+		-row-mt 1 \
+		-auto-alt-ref 1 \
+		-lag-in-frames 25 \
+		-pass 1 \
+		-passlogfile "$passlog" \
+		-an \
+		-f webm /dev/null
+
+	nice -n 10 ionice -c3 ffmpeg -hide_banner -y -stats \
+		-fflags +genpts \
+		-i "$input" \
+		-c:v libvpx-vp9 \
+		-b:v 0 \
+		-crf 34 \
+		-speed 1 \
+		-tile-columns 2 \
+		-row-mt 1 \
+		-auto-alt-ref 1 \
+		-lag-in-frames 25 \
+		-pass 2 \
+		-passlogfile "$passlog" \
+		-c:a libopus \
+		-b:a 96k \
+		-vbr 1 \
+		"$output"
+
+	rm -f "${passlog}-0.log" "${passlog}-0.log.mbtree" 2>/dev/null || true
+}
+
+run_cpu_vp9_fast() {
+	# Fast CPU preset: bigger files, much quicker.
+	nice -n 10 ionice -c3 ffmpeg -hide_banner -y -stats \
+		-fflags +genpts \
+		-i "$input" \
+		-c:v libvpx-vp9 \
+		-crf 36 \
+		-b:v 0 \
+		-speed 6 \
+		-tile-columns 4 \
+		-threads 8 \
+		-row-mt 1 \
+		-auto-alt-ref 1 \
+		-lag-in-frames 25 \
+		-c:a libopus \
+		-b:a 96k \
+		-vbr 1 \
+		"$output"
+}
+
+try_encoder() {
+	local encoder_name="$1"
+	shift
+
+	echo "Trying: $encoder_name" >&2
+	if "$@"; then
+		echo "Using: $encoder_name" >&2
+		return 0
+	fi
+
+	echo "Failed: $encoder_name" >&2
+	rm -f "$output" 2>/dev/null || true
+
+	# If hardware init/entrypoint fails, don't keep retrying.
+	if [[ "$mode" == "auto" ]]; then
+		if [[ -f /tmp/webm-convert.ffreport ]] && grep -Eq '(Error creating a MFX session|Failed to set value.*init_hw_device|No usable encoding entrypoint)' /tmp/webm-convert.ffreport; then
+			echo "Hardware encode not usable; skipping remaining hw attempts" >&2
+			mode="cpu"
+		fi
+	fi
+
+	return 1
+}
+
+# Mode selection:
+# - auto: qsv -> vaapi -> cpu
+# - explicit: try requested; then cpu
+
+if [[ "$mode" == "qsv" || "$mode" == "auto" ]]; then
+	if have_encoder vp9_qsv; then
+		try_encoder vp9_qsv run_qsv_vp9 && mode="done"
+	else
+		[[ "$mode" == "qsv" ]] && echo "vp9_qsv not available; falling back to CPU" >&2
+	fi
+fi
+
+if [[ "$mode" == "vaapi" || "$mode" == "auto" ]]; then
+	if have_encoder vp9_vaapi; then
+		try_encoder vp9_vaapi run_vaapi_vp9 && mode="done"
+	else
+		[[ "$mode" == "vaapi" ]] && echo "vp9_vaapi not available; falling back to CPU" >&2
+	fi
+fi
+
+if [[ "$mode" != "done" ]]; then
+	if [[ "$mode" == "fast" ]]; then
+		run_cpu_vp9_fast
+	else
+		run_cpu_vp9
+	fi
+fi
+
+echo "✓ Done: $output"

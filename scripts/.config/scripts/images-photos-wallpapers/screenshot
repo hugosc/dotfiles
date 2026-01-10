@@ -67,7 +67,24 @@ capture_window(){
 }
 
 capture_selection(){ 
-    maim -s "$FILE" && post
+     # Capture full unblurred screen first
+     local fullscreen=$(mktemp --suffix=.png)
+     trap "rm -f '$fullscreen'" RETURN
+     maim "$fullscreen"
+     
+     # Get selection geometry using slop WITHOUT blur effects
+     # --noopengl disables GPU effects that might apply blur
+     local geometry=$(slop -b 2 --noopengl 2>/dev/null || echo "")
+     
+     if [[ -z "$geometry" ]]; then
+         # User cancelled
+         return 1
+     fi
+     
+     # Use the geometry to crop from the unblurred full screenshot
+     magick "$fullscreen" -crop "$geometry" +repage "$FILE"
+     
+     post
 }
 
 main(){ 

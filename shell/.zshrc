@@ -67,18 +67,6 @@ if [[ "$TERM" == "st-256color" ]] && [[ -f ~/.cache/wal/sequences ]]; then
   cat ~/.cache/wal/sequences 2>/dev/null
 fi
 
-
-# Open Obsidian notes in nvim
-notes() {
-  cd ~/Documents/Obsidian/brain2/
-  nvim
-}
-
-# Create a new tmux session and run 'fum'
-monk() {
-  tmux new-session -d -x- -y- \; send-keys 'fum' C-m \;
-}
-
 # Alias cat -> bat
 alias cat="bat"
 
@@ -271,4 +259,4 @@ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 eval "$(starship init zsh)"
 
 # Show profiling results (comment out for production)
-zprof
+#zprof
