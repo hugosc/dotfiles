@@ -11,3 +11,13 @@
 "3" = "library"
 "F1" = "noop"
 "F3" = "noop"
+
+# Album art (requires ncspot built with `cover` feature)
+"m" = "focus cover"
+
+"i" = "focus library"
+
+# Start in cover view by default
+initial_screen = "cover"
+
+# Cover view options

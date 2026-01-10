@@ -56,6 +56,7 @@ c.colors.downloads.start.bg = c10
 c.colors.downloads.stop.bg = c8
 
 # Core settings
+c.scrolling.smooth = True
 c.tabs.title.format = "{audio}{current_title}"
 c.fonts.web.size.default = 14
 c.completion.open_categories = ['searchengines', 'quickmarks', 'bookmarks', 'history', 'filesystem']
@@ -77,7 +78,7 @@ c.auto_save.session = True
 
 # Keybindings
 config.unbind('d')
-config.bind('=', 'cmd-set-text -s :open')
+config.bind('=', 'zoom-in')
 config.bind('h', 'history')
 config.bind('cs', 'cmd-set-text -s :config-source')
 config.bind('tH', 'config-cycle tabs.show multiple never')
