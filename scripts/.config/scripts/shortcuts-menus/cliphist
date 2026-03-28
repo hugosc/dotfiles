@@ -30,11 +30,8 @@ fi
 
 case "$choice" in
     Text)
-        selection=$(echo "$text_list" | dmenu $DMENU_COLORS -c -l 20 -i -p "Text:" -fn "Iosevka Nerd Font:size=10")
-        if [[ -n "$selection" ]]; then
-            # Fast copy with xclip
-            echo "$selection" | cliphist decode | xclip -selection clipboard 2>/dev/null
-        fi
+        # Use fzf picker with delete support in a terminal window
+        ~/.config/scripts/shortcuts-menus/txtcliphist-fzf sel &
         ;;
     Images)
         # Use fzfub-based image picker
