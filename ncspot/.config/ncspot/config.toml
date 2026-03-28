@@ -1,3 +1,9 @@
+# Start in cover view by default
+initial_screen = "library"
+
+# Prefer the HTTPS AP port.
+ap_port = 443
+
 # Use "Shift+q" to quit instead of the default "q"
 [keybindings]
 "Shift+q" = "quit"
@@ -17,7 +23,5 @@
 
 "i" = "focus library"
 
-# Start in cover view by default
-initial_screen = "cover"
-
 # Cover view options
+cover_max_scale = "1"

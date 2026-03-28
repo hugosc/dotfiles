@@ -5,7 +5,7 @@
     "themeLinks": [],
     "eagerPatches": false,
     "enabledThemes": [
-        "midnightblackmetal.css"
+        "walcord.theme.css"
     ],
     "enableReactDevtools": false,
     "frameless": false,
@@ -15,7 +15,7 @@
     "winNativeTitleBar": false,
     "plugins": {
         "ChatInputButtonAPI": {
-            "enabled": false
+            "enabled": true
         },
         "CommandsAPI": {
             "enabled": true
@@ -129,7 +129,7 @@
             "enabled": false
         },
         "CopyFileContents": {
-            "enabled": false
+            "enabled": true
         },
         "CopyUserURLs": {
             "enabled": false
@@ -263,9 +263,6 @@
         "MessageLogger": {
             "enabled": false
         },
-        "MessageTags": {
-            "enabled": false
-        },
         "MoreCommands": {
             "enabled": false
         },
@@ -312,7 +309,7 @@
             "enabled": false
         },
         "NoTypingAnimation": {
-            "enabled": false
+            "enabled": true
         },
         "NoUnblockToJump": {
             "enabled": false
@@ -441,7 +438,7 @@
             "enabled": false
         },
         "SilentTyping": {
-            "enabled": false
+            "enabled": true
         },
         "SortFriendRequests": {
             "enabled": false
@@ -534,7 +531,7 @@
             "enabled": true
         },
         "WebScreenShareFixes": {
-            "enabled": true
+            "enabled": false
         },
         "WhoReacted": {
             "enabled": false
@@ -574,6 +571,15 @@
         },
         "ImageFilename": {
             "enabled": false
+        },
+        "MoreQuickReactions": {
+            "enabled": false
+        },
+        "NoDefaultHangStatus": {
+            "enabled": false
+        },
+        "CustomCommands": {
+            "enabled": false
         }
     },
     "notifications": {
@@ -586,7 +592,7 @@
         "authenticated": false,
         "url": "https://api.vencord.dev/",
         "settingsSync": false,
-        "settingsSyncVersion": 1764328730709
+        "settingsSyncVersion": 1774561428445
     },
     "uiElements": {
         "chatBarButtons": {},

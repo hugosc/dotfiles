@@ -2,16 +2,25 @@
     "discordBranch": "ptb",
     "minimizeToTray": true,
     "arRPC": true,
-    "splashColor": "rgb(133, 146, 173)",
-    "splashBackground": "rgb(0, 0, 0)",
+    "splashColor": "rgb(203, 192, 192)",
+    "splashBackground": "rgb(67, 67, 65)",
     "tray": true,
     "customTitleBar": false,
     "spellCheckLanguages": [
         "en-GB",
         "en"
     ],
-    "hardwareVideoAcceleration": true,
+    "hardwareVideoAcceleration": false,
     "enableSplashScreen": false,
     "clickTrayToShowHide": true,
-    "appBadge": false
+    "appBadge": false,
+    "audio": {
+        "deviceSelect": true,
+        "ignoreInputMedia": false,
+        "ignoreDevices": false,
+        "granularSelect": true,
+        "onlyDefaultSpeakers": false,
+        "onlySpeakers": false
+    },
+    "hardwareAcceleration": true
 }
