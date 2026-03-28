@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Event-driven brightness updates for dwmblocks.
+# Watches for kernel udev backlight events and triggers the brightness block refresh.
+
+DWM_BLOCKS_SIGNAL=19
+
+udevadm monitor --kernel --subsystem-match=backlight 2>/dev/null | while read -r line; do
+    case "$line" in
+        *"backlight"*)
+            pkill -RTMIN+"$DWM_BLOCKS_SIGNAL" dwmblocks 2>/dev/null
+            ;;
+    esac
+done

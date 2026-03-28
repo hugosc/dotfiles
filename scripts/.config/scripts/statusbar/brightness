@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Brightness status script for dwmblocks
+# Uses brightnessctl
+
+CURRENT=$(brightnessctl get 2>/dev/null)
+MAX=$(brightnessctl max 2>/dev/null)
+
+if [ -z "$CURRENT" ] || [ -z "$MAX" ] || [ "$MAX" -eq 0 ]; then
+    echo "? --%"
+    exit 0
+fi
+
+PERCENT=$(( CURRENT * 100 / MAX ))
+
+# >= 40%: sun (nf-fa-sun_o U+F185)
+# < 40%: moon (nf-fa-moon_o U+F186)
+if [ "$PERCENT" -ge 40 ]; then
+    ICON=$(printf "\uf185")
+else
+    ICON=$(printf "\uf186")
+fi
+
+echo "$ICON $PERCENT%"
+
+# Click handler
+case $BLOCK_BUTTON in
+    4) brightnessctl set +5% > /dev/null ;;   # Scroll up: increase
+    5) brightnessctl set 5%- > /dev/null ;;   # Scroll down: decrease
+    1) brightnessctl set 100% > /dev/null && pkill -RTMIN+19 dwmblocks ;;  # Left click: max
+    3) brightnessctl set 20% > /dev/null && pkill -RTMIN+19 dwmblocks ;;   # Right click: dim
+esac
