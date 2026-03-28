@@ -29,18 +29,20 @@ start_recording() {
 	sleep 0.5
 	pkill -9 -f "ffmpeg -vaapi_device.*screenrecord_" 2>/dev/null
 
-	# Get screen geometry - extract just WxH
-	# xrandr output: "1920x1080+0+0" -> we need "1920x1080"
-	full_geometry=$(xrandr | grep " connected primary" | grep -oE '[0-9]+x[0-9]+\+[0-9]+\+[0-9]+')
-	geometry=$(echo "$full_geometry" | cut -d+ -f1)
-	
-	# Fallback if that fails
-	if [[ -z "$geometry" ]]; then
-		geometry=$(xdotool getdisplaygeometry | awk '{print $1"x"$2}')
+	# Select capture region using slop (same tool used by screenshot script)
+	# slop output example: "640x480+100+200"
+	selection=$(slop -b 2 --noopengl 2>/dev/null || true)
+	if [[ -z "$selection" ]]; then
+		rm -f "$REC_FLAG"
+		exit 1
 	fi
 	
+	geometry=$(echo "$selection" | cut -d+ -f1)
+	x=$(echo "$selection" | cut -d+ -f2)
+	y=$(echo "$selection" | cut -d+ -f3)
+	
 	# Save geometry for reference
-	echo "$geometry" > "$REC_GEOMETRY"
+	echo "$selection" > "$REC_GEOMETRY"
 
 	timestamp=$(get_timestamp)
 	output="${REC_DIR}/screenrecord_${timestamp}.mp4"
@@ -63,8 +65,8 @@ start_recording() {
 	ffmpeg -vaapi_device /dev/dri/renderD128 \
 		-f x11grab \
 		-framerate 30 \
-		-s "$geometry" \
-		-i "$DISPLAY" \
+		-video_size "$geometry" \
+		-i "$DISPLAY+$x,$y" \
 		-f pulse \
 		-i alsa_input.pci-0000_00_1f.3.analog-stereo \
 		-f pulse \
@@ -138,26 +140,6 @@ stop_recording() {
 		filename=$(basename "$output")
 		notify-send --urgency=normal "Recording stopped" "$filename (copied to clipboard)"
 		
-		# Queue WebM conversion in background (low priority)
-		# Conversion will happen in the background without blocking
-		webm_output="${output%.*}.webm"
-		if [[ ! -f "$webm_output" ]]; then
-			(
-				sleep 2  # Give file a moment to fully flush to disk
-				nice -n 10 ionice -c3 ~/.config/scripts/audio-video/webm-convert "$output" 2>&1 | \
-					while IFS= read -r line; do
-						# Log conversion progress to syslog (optional, for debugging)
-						logger -t screenrecord-convert "$line"
-					done
-				# When conversion is done, copy WebM to clipboard and notify
-				if [[ -f "$webm_output" ]]; then
-					webm_uri="file://${webm_output}"
-					echo -n "$webm_uri" | xclip -selection clipboard -t text/uri-list -i
-					webm_filename=$(basename "$webm_output")
-					notify-send --urgency=normal "WebM ready" "$webm_filename (copied to clipboard)"
-				fi
-			) &
-		fi
 	fi
 }
 
@@ -166,8 +148,9 @@ status() {
 		# Show recording indicator
 		echo "●"
 	else
-		# Return empty for dwmblocks when not recording
-		return 1
+		# Output nothing when not recording (empty string clears the block)
+		echo ""
+		return 0
 	fi
 }
 

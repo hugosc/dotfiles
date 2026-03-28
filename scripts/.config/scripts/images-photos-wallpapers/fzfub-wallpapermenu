@@ -49,6 +49,7 @@ case "$#" in
      nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
      nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
      nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+     nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
      sleep 0.5
   ;;
 2)
@@ -63,6 +64,9 @@ case "$#" in
     bash ~/.config/wal/hooks/dunst-reload
     bash ~/.config/wal/hooks/emacs-theme-reload
     bash ~/.config/wal/hooks/windowmaker-reload
+    walcord --quiet
+    sleep 0.2
+    touch ~/.config/vesktop/themes/walcord.theme.css
     
     # Give everything a moment to settle
     sleep 0.3
@@ -74,20 +78,24 @@ case "$#" in
     # Generate light colors, darken them slightly with optimized combined script
     wal -i "$1" -l --backend "$WAL_BACKEND" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&
+      { cat ~/.cache/wal/colors.Xresources; [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra; } | xrdb -load - &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+    nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
   elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
     wal -i "$1" --backend "$WAL_BACKEND" &&
       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10 &&
+      { cat ~/.cache/wal/colors.Xresources; [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra; } | xrdb -load - &&
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     nohup "$PW16SCRIPT" >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
     nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+    nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
    elif [[ "$2" == "dark" ]]; then
      # Generate dark colors - regenerate templates to ensure no darkened values remain
      wal -i "$1" --backend "$WAL_BACKEND" &&
@@ -97,6 +105,7 @@ case "$#" in
        nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
        nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
        nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+       nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
        sleep 0.5
   fi
   ;;
