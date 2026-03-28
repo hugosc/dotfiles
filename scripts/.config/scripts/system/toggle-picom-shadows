@@ -1,0 +1,20 @@
+#!/bin/sh
+
+NORMAL_CONF="$HOME/.config/picom/picom.conf"
+GAPLESS_CONF="$HOME/.config/picom/picom-gapless.conf"
+
+if [ -f "/tmp/dwm-gapless-mode" ]; then
+  CONF="$GAPLESS_CONF"
+else
+  CONF="$NORMAL_CONF"
+fi
+
+pkill -x picom 2>/dev/null || true
+
+i=0
+while pgrep -x picom >/dev/null 2>&1 && [ "$i" -lt 20 ]; do
+  sleep 0.1
+  i=$((i + 1))
+done
+
+picom --daemon --config "$CONF"

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# Manual trackpad control script
+# Usage: trackpad-control enable|disable|toggle
+
+ACTION="${1:-status}"
+
+case "$ACTION" in
+    enable)
+        echo "Enabling trackpad..."
+        if command -v xinput &> /dev/null; then
+            xinput enable "Elan Touchpad" 2>/dev/null && echo "✓ Trackpad enabled (via xinput)"
+        fi
+        if [ -e /dev/input/event7 ]; then
+            chmod 644 /dev/input/event7 2>/dev/null && echo "✓ Trackpad permissions restored"
+        fi
+        ;;
+    disable)
+        echo "Disabling trackpad..."
+        if command -v xinput &> /dev/null; then
+            xinput disable "Elan Touchpad" 2>/dev/null && echo "✓ Trackpad disabled (via xinput)"
+        fi
+        if [ -e /dev/input/event7 ]; then
+            chmod 000 /dev/input/event7 2>/dev/null && echo "✓ Trackpad permissions removed" || echo "✗ Failed to change permissions (need sudo)"
+        fi
+        ;;
+    toggle)
+        if command -v xinput &> /dev/null; then
+            STATE=$(xinput list-props "Elan Touchpad" 2>/dev/null | grep "Device Enabled" | awk '{print $NF}')
+            if [ "$STATE" = "1" ]; then
+                xinput disable "Elan Touchpad" && echo "✓ Trackpad disabled"
+            else
+                xinput enable "Elan Touchpad" && echo "✓ Trackpad enabled"
+            fi
+        fi
+        ;;
+    status)
+        if command -v xinput &> /dev/null; then
+            STATE=$(xinput list-props "Elan Touchpad" 2>/dev/null | grep "Device Enabled" | awk '{print $NF}')
+            if [ "$STATE" = "1" ]; then
+                echo "Trackpad: ENABLED"
+            else
+                echo "Trackpad: DISABLED"
+            fi
+        else
+            echo "xinput not available. Install xorg-xinput to check status."
+        fi
+        ;;
+    *)
+        echo "Usage: trackpad-control {enable|disable|toggle|status}"
+        exit 1
+        ;;
+esac

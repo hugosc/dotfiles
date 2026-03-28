@@ -13,5 +13,5 @@ if [ ! -f "$STATE_FILE" ]; then
     fi
 fi
 
-# Read state and launch (single file read, single conditional)
-[ "$(cat "$STATE_FILE")" = "opaque" ] && exec st -A 1.0 "$@" || exec st -A 0.85 "$@"
+# Launch st; opacity is applied via compositor/window property
+exec st "$@"

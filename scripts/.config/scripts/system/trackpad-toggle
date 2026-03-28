@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# Toggle trackpad based on external mouse presence
+# Detects when USB mice are plugged in/out and disables/enables trackpad
+
+# Trackpad device event number (may vary per system)
+TRACKPAD_EVENT="/dev/input/event7"  # or event8 depending on your setup
+TRACKPAD_ID="7"  # The i2c touchpad typically maps to event7 or event8
+
+# Check if a mouse is connected via USB
+mouse_connected() {
+    # Check if any USB mouse device is active
+    if [ -e /dev/input/by-id/usb-Logitech_USB_Optical_Mouse-event-mouse ]; then
+        return 0  # Mouse is connected
+    fi
+    return 1  # No mouse connected
+}
+
+# Disable trackpad using evdev
+disable_trackpad() {
+    if [ -e "$TRACKPAD_EVENT" ]; then
+        # Disable via event device
+        chmod 000 "$TRACKPAD_EVENT" 2>/dev/null
+        logger "Trackpad disabled - mouse connected"
+    fi
+}
+
+# Enable trackpad using evdev
+enable_trackpad() {
+    if [ -e "$TRACKPAD_EVENT" ]; then
+        chmod 644 "$TRACKPAD_EVENT" 2>/dev/null
+        logger "Trackpad enabled - mouse disconnected"
+    fi
+}
+
+# Main logic
+if mouse_connected; then
+    disable_trackpad
+else
+    enable_trackpad
+fi

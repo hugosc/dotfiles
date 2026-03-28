@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+# Trackpad daemon - monitors for mouse connection/disconnection
+# Disables Elan Touchpad when USB mouse is plugged in
+
+# Trackpad device event (Elan Touchpad on event7)
+TRACKPAD_EVENT="/dev/input/event7"
+
+# USB mouse pattern
+MOUSE_PATTERN="Logitech USB Optical Mouse"
+DEBOUNCE_DELAY=2
+
+LAST_STATE=""
+
+check_mouse_connected() {
+    # Look for connected USB mice in /proc/bus/input/devices
+    if grep -q "Logitech USB Optical Mouse" /proc/bus/input/devices 2>/dev/null; then
+        return 0  # Connected
+    fi
+    return 1  # Not connected
+}
+
+disable_trackpad() {
+    if [ -e "$TRACKPAD_EVENT" ]; then
+        # Try various methods to disable the trackpad
+        if command -v xinput &> /dev/null; then
+            # Method 1: Using xinput if available
+            xinput disable "Elan Touchpad" 2>/dev/null
+        fi
+        # Fallback: remove read permissions
+        chmod 000 "$TRACKPAD_EVENT" 2>/dev/null || echo "[trackpad-daemon] WARNING: Could not disable trackpad (need sudo)" >> ~/.cache/trackpad-daemon.log
+        echo "[trackpad-daemon] Trackpad disabled - mouse detected" >> ~/.cache/trackpad-daemon.log
+    fi
+}
+
+enable_trackpad() {
+    if [ -e "$TRACKPAD_EVENT" ]; then
+        # Try various methods to enable the trackpad
+        if command -v xinput &> /dev/null; then
+            # Method 1: Using xinput if available
+            xinput enable "Elan Touchpad" 2>/dev/null
+        fi
+        # Fallback: restore permissions
+        chmod 644 "$TRACKPAD_EVENT" 2>/dev/null || echo "[trackpad-daemon] WARNING: Could not enable trackpad (need sudo)" >> ~/.cache/trackpad-daemon.log
+        echo "[trackpad-daemon] Trackpad enabled - no mouse detected" >> ~/.cache/trackpad-daemon.log
+    fi
+}
+
+# Infinite loop with file monitoring
+monitor_devices() {
+    while true; do
+        sleep "$DEBOUNCE_DELAY"
+        
+        if check_mouse_connected; then
+            NEW_STATE="mouse_on"
+        else
+            NEW_STATE="mouse_off"
+        fi
+        
+        if [ "$LAST_STATE" != "$NEW_STATE" ]; then
+            if [ "$NEW_STATE" = "mouse_on" ]; then
+                disable_trackpad
+            else
+                enable_trackpad
+            fi
+            LAST_STATE="$NEW_STATE"
+        fi
+    done
+}
+
+# Run daemon
+monitor_devices &
+echo $! > "$HOME/.cache/trackpad-daemon.pid"
+wait
