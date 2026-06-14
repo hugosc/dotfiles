@@ -22,6 +22,15 @@ emacsclient -e "(dolist (frame (frame-list)) (set-frame-parameter frame 'alpha-b
 
 pkill -USR1 '^st$' &>/dev/null &
 
+# Keep windowed apps in sync with the global toggle via _NET_WM_WINDOW_OPACITY.
+# These calls are no-ops if picom isn't running or if no windows exist.
+~/.config/scripts/system/apply-transparency-state --all "helium-browser" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "helium" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "vesktop" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "Vesktop" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "discord" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "Discord" &>/dev/null &
+
 # Signal dwm to update bar transparency on next event loop iteration
 dwm_pid=$(pidof dwm)
 if [ -n "$dwm_pid" ]; then

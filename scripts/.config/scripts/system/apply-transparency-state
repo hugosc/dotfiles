@@ -1,9 +1,20 @@
 #!/bin/bash
 # Apply saved transparency state to a window
-# Usage: apply-transparency-state <window_class>
+# Usage: apply-transparency-state [--all|--last] <window_class>
 # Called when new windows are created
 
 STATE_FILE="/tmp/transparency-state"
+
+mode="last"
+case "${1:-}" in
+  --all) mode="all"; shift ;;
+  --last) mode="last"; shift ;;
+  -h|--help)
+    printf '%s\n' "Usage: $(basename "$0") [--all|--last] <window_class>" >&2
+    exit 0
+    ;;
+esac
+
 WINDOW_CLASS="${1:-kitty}"
 
 # Default to transparent if no state file
@@ -23,7 +34,13 @@ fi
 
 # Apply to windows matching class
 if pgrep -x "picom" >/dev/null; then
-  xdotool search --class "$WINDOW_CLASS" 2>/dev/null | tail -1 | while read window_id; do
+  window_ids=$(xdotool search --class "$WINDOW_CLASS" 2>/dev/null || true)
+  if [ "$mode" = "last" ]; then
+    window_ids=$(printf '%s\n' "$window_ids" | tail -1)
+  fi
+
+  printf '%s\n' "$window_ids" | while read -r window_id; do
+    [ -z "$window_id" ] && continue
     xprop -id "$window_id" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY "$opacity_uint32" 2>/dev/null
   done
 fi
