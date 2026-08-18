@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-export DISPLAY=:0
+: "${DISPLAY:=:0}"
+export DISPLAY
 
 # st is hardcoded, but you can
 # switch to another terminal
@@ -12,6 +13,36 @@ export DISPLAY=:0
 WPFOLDER=~/Pictures/wallpaper/    # wallpaper folder
 PW16SCRIPT=~/scripts/pywal16      # pywal16 post-run script
 TEMPIMG=~/Pictures/wallpaper/temp # save as a temporary image for restoration on restart
+WALCORD_THEME=~/.config/vesktop/themes/walcord.theme.css
+WALCORD_LOCK=~/.cache/wal/walcord.lock
+WALCORD_MTIME=~/.cache/wal/walcord.mtime
+
+# Temporary CPU boost for the (brief) heavy color/template work below.
+# Sets EPP to performance for the duration of this script, restoring the
+# previous profile (relaxed/medium/performance) on exit. Uses power-mode
+# (self-escalates via sudo).
+WALLPAPER_BOOST_PREV=""
+WALLPAPER_BOOST_PID=""
+wallpaper_boost_on() {
+    # Record the active profile (relaxed/medium/performance) so we can restore
+    # exactly that one, not just fall back to relaxed/longevity on close.
+    WALLPAPER_BOOST_PREV=$(~/scripts/power-mode mode 2>/dev/null)
+    # Apply in the background so the picker opens instantly; boost_off waits
+    # for it to finish before restoring, keeping the restore race-free.
+    ~/scripts/power-mode performance >/dev/null 2>&1 &
+    WALLPAPER_BOOST_PID=$!
+}
+wallpaper_boost_off() {
+    [ -n "$WALLPAPER_BOOST_PREV" ] || return 0
+    [ -n "$WALLPAPER_BOOST_PID" ] && wait "$WALLPAPER_BOOST_PID" 2>/dev/null
+    # Restore the exact mode that was active before the boost (not the
+    # current one, which is 'performance' because we just set it).
+    ~/scripts/power-mode "$WALLPAPER_BOOST_PREV" >/dev/null 2>&1 || true
+    WALLPAPER_BOOST_PREV=""
+    WALLPAPER_BOOST_PID=""
+}
+trap wallpaper_boost_off EXIT
+
 
 # Load backend preference (default to colorz if not set)
 if [ -f ~/.config/wal/backend ]; then
@@ -20,9 +51,44 @@ else
     WAL_BACKEND="colorz"
 fi
 
+update_walcord_theme() {
+    mkdir -p ~/.cache/wal ~/.config/vesktop/themes
+    (
+        flock -x 9
+        ~/.local/bin/walcord-default-fast "$WALCORD_THEME" || walcord --quiet -j ~/.cache/wal/colors.json -o "$WALCORD_THEME" || exit 1
+
+        now="$(date +%s)"
+        last="0"
+        if [ -f "$WALCORD_MTIME" ]; then
+            last="$(cat "$WALCORD_MTIME" 2>/dev/null || printf '0')"
+        fi
+        if [ "$now" -le "$last" ]; then
+            now="$((last + 1))"
+        fi
+        printf "%s" "$now" > "$WALCORD_MTIME"
+        touch -d "@$now" "$WALCORD_THEME" 2>/dev/null || touch "$WALCORD_THEME"
+    ) 9>"$WALCORD_LOCK"
+}
+
+run_full_post_updates_async() {
+    # UI hooks run immediately in parallel (fast track)
+    nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
+    nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
+    nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
+    # Restart wminfo to pick up new pywal colours
+    nohup bash -c 'killall wminfo 2>/dev/null; /home/croc/.config/scripts/system/wminfo-launcher &' >/dev/null 2>&1 &
+    # Template regen + pywal16: run synchronously so the CPU boost (and the
+    # EXIT trap that restores it) covers the actual heavy work.
+    ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates >/dev/null 2>&1 || true
+    "$HOME/scripts/pywal16" >/dev/null 2>&1 || true
+}
+
 case "$#" in
-0)
-  # Load all Xresources at once for better performance
+ 0)
+   # Boost to full clocks for the whole picker session (browsing + applies).
+   # The EXIT trap restores the previous mode when the picker (st) closes.
+   wallpaper_boost_on
+   # Load all Xresources at once for better performance
   {
     [ -f ~/.cache/wal/colors.Xresources ] && cat ~/.cache/wal/colors.Xresources
     [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra
@@ -30,83 +96,70 @@ case "$#" in
   } | xrdb -merge
   # Source and export FZF colors
   [ -f ~/.cache/wal/colors.sh ] && . ~/.cache/wal/colors.sh && export FZF_DEFAULT_OPTS
-  # Launch st and apply sequences immediately, then run fzfub
+  # Launch st and apply sequences immediately, then run loadout picker
   # Center the window: get screen dimensions and calculate offset
   read -r SCREEN_W SCREEN_H < <(xrandr --current | grep ' connected primary' | grep -oP '\d+x\d+' | head -1 | tr 'x' ' ')
   TERM_W=$((160 * 8)) # approximate width in pixels (chars * avg char width)
   TERM_H=$((25 * 14)) # approximate height in pixels (lines * font size)
   OFFSET_X=$(((SCREEN_W - TERM_W) / 2))
   OFFSET_Y=$(((SCREEN_H - TERM_H) / 2))
-  st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub '"$WPFOLDER"' w' || exit 0
+  st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub-loadout' || exit 0
   ;;
-1)
-   # Dark mode - default behavior when called with just wallpaper path
-   feh --bg-fill "$1" &&
-     wal -i "$1" --backend "$WAL_BACKEND" &&
-     ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
-     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-     "$PW16SCRIPT" &&
-     nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
-     nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-     nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-     nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
-     sleep 0.5
-  ;;
-2)
-  # Handle both theme and dark/light/medium mode, or wallpaper-only mode, or theme-only mode
-  if [[ "$1" == "theme-only" ]]; then
+ 1)
+    # Dark mode - default behavior when called with just wallpaper path
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+   if set-wallpaper "$1" &&
+      wal -n -i "$1" --backend "$WAL_BACKEND"; then
+     . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
+     update_walcord_theme
+      run_full_post_updates_async
+   fi
+   ;;
+ 2)
+   # Handle both theme and dark/light/medium mode, or wallpaper-only mode, or theme-only mode
+   if [[ "$1" == "theme-only" ]]; then
     # Apply preset theme WITHOUT changing wallpaper (theme-only mode from Ctrl+T)
-    wal --theme "$2" &&
-      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
-      "$PW16SCRIPT"
-    
-    # Reload hooks synchronously to ensure proper application
-    bash ~/.config/wal/hooks/dunst-reload
-    bash ~/.config/wal/hooks/emacs-theme-reload
-    bash ~/.config/wal/hooks/windowmaker-reload
-    walcord --quiet
-    sleep 0.2
-    touch ~/.config/vesktop/themes/walcord.theme.css
-    
-    # Give everything a moment to settle
-    sleep 0.3
+    if wal --theme "$2"; then
+      . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
+      update_walcord_theme
+      run_full_post_updates_async
+    fi
   elif [[ "$2" == "wallpaper-only" ]]; then
-    # Set wallpaper WITHOUT updating pywal theme
-    feh --bg-fill "$1" &&
-      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    # Set wallpaper WITHOUT updating pywal theme or colors.json
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    set-wallpaper "$1"
   elif [[ "$2" == "light" ]]; then
     # Generate light colors, darken them slightly with optimized combined script
-    wal -i "$1" -l --backend "$WAL_BACKEND" &&
-      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1 &&
-      { cat ~/.cache/wal/colors.Xresources; [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra; } | xrdb -load - &&
-      ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
-    nohup "$PW16SCRIPT" >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-    nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
-  elif [[ "$2" == "medium" ]]; then
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    if set-wallpaper "$1" &&
+       wal -n -i "$1" -l --backend "$WAL_BACKEND" &&
+       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors 0.1 0 0.2 0.1; then
+      . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
+       fzfub-wallpaper-save "$1" mode light
+        update_walcord_theme
+       run_full_post_updates_async
+    fi
+ elif [[ "$2" == "medium" ]]; then
     # Generate light colors with much higher darkness and saturation
-    wal -i "$1" --backend "$WAL_BACKEND" &&
-      ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10 &&
-      { cat ~/.cache/wal/colors.Xresources; [ -f ~/.cache/wal/xrdb_extra ] && cat ~/.cache/wal/xrdb_extra; } | xrdb -load - &&
+    ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
+    if set-wallpaper "$1" &&
+       wal -n -i "$1" --backend "$WAL_BACKEND" &&
+       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/process-wal-colors -0.15 -0.0 -0.0 0.10; then
+      . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
+       fzfub-wallpaper-save "$1" mode medium
+        update_walcord_theme
+        run_full_post_updates_async
+      fi
+    elif [[ "$2" == "dark" ]]; then
+      # Generate dark colors - regenerate templates to ensure no darkened values remain
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
-    nohup "$PW16SCRIPT" >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-    nohup ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-    nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
-   elif [[ "$2" == "dark" ]]; then
-     # Generate dark colors - regenerate templates to ensure no darkened values remain
-     wal -i "$1" --backend "$WAL_BACKEND" &&
-       ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates &&
-       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1 &&
-       "$PW16SCRIPT" &&
-       nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
-       nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
-       nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-       nohup sh -c 'walcord --quiet; sleep 0.2; touch ~/.config/vesktop/themes/walcord.theme.css' >/dev/null 2>&1 &
-       sleep 0.5
+      if set-wallpaper "$1" &&
+         wal -n -i "$1" --backend "$WAL_BACKEND"; then
+        . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
+        fzfub-wallpaper-save "$1" mode dark
+        update_walcord_theme
+        run_full_post_updates_async
+      fi
   fi
   ;;
 *) exit 0 ;;
