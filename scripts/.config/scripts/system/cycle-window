@@ -1,0 +1,32 @@
+#!/bin/bash
+DIR="${1:-next}"
+
+CURRENT_DESKTOP=$(xdotool get_desktop)
+ACTIVE=$(xdotool getactivewindow 2>/dev/null)
+ACTIVE_HEX=$(printf "0x%08x" "$ACTIVE")
+
+mapfile -t WINDOWS_HEX < <(wmctrl -l | awk -v d="$CURRENT_DESKTOP" '$2 == d && $1 != "0x00000000" {print $1}')
+
+TOTAL=${#WINDOWS_HEX[@]}
+[ "$TOTAL" -le 1 ] && exit 0
+
+POS=-1
+for i in "${!WINDOWS_HEX[@]}"; do
+    if [ "${WINDOWS_HEX[$i]}" = "$ACTIVE_HEX" ]; then
+        POS=$i
+        break
+    fi
+done
+
+if [ "$POS" -eq -1 ]; then
+    TARGET_HEX="${WINDOWS_HEX[$((TOTAL - 1))]}"
+else
+    case "$DIR" in
+        next) TARGET_IDX=$(( (POS + 1) % TOTAL )) ;;
+        prev) TARGET_IDX=$(( (POS - 1 + TOTAL) % TOTAL )) ;;
+    esac
+    TARGET_HEX="${WINDOWS_HEX[$TARGET_IDX]}"
+fi
+
+TARGET_DEC=$((TARGET_HEX))
+xdotool windowactivate "$TARGET_DEC"

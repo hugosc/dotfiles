@@ -1,0 +1,23 @@
+#!/bin/sh
+# Launch ncspot in a tmux st window (top-right)
+# Start ncspot only after the st window exists so ueberzug can init
+export DISPLAY=:0
+
+tmux has-session -t music 2>/dev/null || {
+    tmux new-session -d -s music
+    NCSPOT_NEEDS_START=1
+}
+
+st -c music -n music -g 80x24 -e tmux attach-session -t music &
+
+for i in $(seq 1 20); do
+    WID=$(xdotool search --onlyvisible --class music 2>/dev/null | head -1)
+    if [ -n "$WID" ]; then
+        xdotool windowsize "$WID" 284 256
+        xdotool windowmove "$WID" 1542 86
+        sleep 0.05
+        [ -n "${NCSPOT_NEEDS_START:-}" ] && tmux send-keys -t music ncspot Enter
+        exit 0
+    fi
+    sleep 0.05
+done

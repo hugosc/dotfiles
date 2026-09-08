@@ -1,0 +1,41 @@
+#!/bin/bash
+# wmfrog weather dockapp launcher
+# Optimized settings for Bristol / Bournemouth
+#
+# Bristol (EGGD):  Bristol Airport, coastal SW England
+#   - Typical winds: 5-20kt, gusts to 35kt in storms
+# Bournemouth (EGHH): Bournemouth Airport, south coast
+#   - Typical winds: 5-18kt, slightly milder than Bristol
+#
+# Usage:
+#   wmfrog-launcher              -> Bristol (default)
+#   wmfrog-launcher bristol      -> Bristol
+#   wmfrog-launcher bournemouth  -> Bournemouth
+#   wmfrog-launcher <station>    -> any 4-letter METAR code
+
+STATION="${1:-bristol}"
+LABEL="$STATION"
+
+case "$(echo "$STATION" | tr '[:upper:]' '[:lower:]')" in
+  bristol)
+    STATION="EGGD"
+    LABEL="Bristol"
+    MAXWIND=40
+    ;;
+  bournemouth)
+    STATION="EGHH"
+    LABEL="Bournemouth"
+    MAXWIND=35
+    ;;
+  [a-z][a-z][a-z][a-z])
+    # already a 4-letter station code
+    LABEL="$STATION"
+    MAXWIND=40
+    ;;
+  esac
+
+# UK is UTC (offset 0), but in summer BST is UTC+1.
+# wmfrog -o takes a fixed integer offset; accurate when BST, off by 1h in winter.
+# Use offset 1 for BST accuracy, or 0 for winter. We'll use 1 since
+# it's August (BST).
+exec /bin/wmfrog -s "$STATION" -m -w "$MAXWIND" -l "$LABEL" -o 1 -delay 5 "$@"

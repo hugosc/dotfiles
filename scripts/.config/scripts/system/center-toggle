@@ -1,0 +1,23 @@
+#!/bin/bash
+WIN=$(xdotool getactivewindow)
+PARENT=$(xwininfo -id "$WIN" -children | sed -n 's/.*Parent window id: //p' | tr -d ' ')
+STATE="$HOME/.cache/center-state"
+
+read -r SCREEN_WIDTH SCREEN_HEIGHT < <(xdotool getdisplaygeometry)
+eval "$(xdotool getwindowgeometry --shell "$PARENT" 2>/dev/null)"
+PW="$WIDTH"; PH="$HEIGHT"; PX="$X"; PY="$Y"
+
+CX=$(( (SCREEN_WIDTH - PW) / 2 ))
+CY=$(( (SCREEN_HEIGHT - PH) / 2 ))
+
+if [ "$PX" -eq "$CX" ] && [ "$PY" -eq "$CY" ]; then
+    read -r SAVED_WIN SX SY < "$STATE" 2>/dev/null
+    if [ "$SAVED_WIN" = "$WIN" ]; then
+        xdotool windowmove "$PARENT" "$SX" "$SY"
+        rm -f "$STATE"
+    fi
+else
+    printf '%s %s %s\n' "$WIN" "$PX" "$PY" > "$STATE"
+    xdotool windowmove "$PARENT" "$CX" "$CY"
+fi
+xdotool windowraise "$WIN"

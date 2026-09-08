@@ -1,0 +1,22 @@
+#!/bin/bash
+# Custom wminfo plugin: depths, pages, daemons, power mode
+
+LINES=$(wc -l < "$HOME/.config/doom/config.org" 2>/dev/null || echo 0)
+ORG_FILES=$(find "$HOME/Documents/brain2" -maxdepth 3 -name '*.org' 2>/dev/null | wc -l)
+PROCS=$(ps -e --no-headers 2>/dev/null | wc -l)
+EMACS_WINS=$(xdotool search --class "Emacs" 2>/dev/null | wc -l)
+
+POWER_MODE=$(~/scripts/power-mode status 2>/dev/null || echo "MBA OFF")
+
+long() {
+  local s="$1"
+  local out=""
+  for i in {1..20}; do out="${out}${s}   "; done
+  echo "$out"
+}
+
+long "Depths Reached: ${LINES}km"
+long "Pages: ${ORG_FILES}"
+long "Daemon Headcount: $((PROCS - EMACS_WINS))"
+long "Saved: ${EMACS_WINS}"
+long "$POWER_MODE"

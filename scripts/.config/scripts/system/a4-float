@@ -1,0 +1,67 @@
+#!/bin/bash
+# Window size cycle: cycles through preset sizes, maintaining quadrant position
+# Usage: a4-float [ -d +1 | -1 ]
+#   -d +1  (or omitted)  → forward cycle
+#   -d -1                → backward cycle
+
+DIR="${1:-+1}"
+case "$1" in
+  -d) DIR="$2" ;;
+esac
+
+WIN=$(xdotool getactivewindow)
+PARENT=$(xwininfo -id "$WIN" -children | sed -n 's/.*Parent window id: //p' | tr -d ' ')
+STATE="$HOME/.cache/quadrant-state"
+
+SIZES=("660 524" "660 800" "1024 704" "847 927" "1248 927")
+PRESETS=${#SIZES[@]}
+
+eval "$(xdotool getwindowgeometry --shell "$WIN")"
+CW="$WIDTH"; CH="$HEIGHT"
+
+CUR=-1
+for i in "${!SIZES[@]}"; do
+  read -r PW PH <<< "${SIZES[$i]}"
+  if [ "$CW" -eq "$PW" ] && [ "$CH" -eq "$PH" ]; then
+    CUR=$i; break
+  fi
+done
+
+NEXT=$(( (CUR + DIR + PRESETS) % PRESETS ))
+read -r NW NH <<< "${SIZES[$NEXT]}"
+
+read -r SCREEN_WIDTH SCREEN_HEIGHT < <(xdotool getdisplaygeometry)
+eval "$(xdotool getwindowgeometry --shell "$PARENT" 2>/dev/null)"
+OLD_X="$X"; OLD_W="$WIDTH"; OLD_Y="$Y"; OLD_H="$HEIGHT"
+EXTRA_W=$((OLD_W - CW)); EXTRA_H=$((OLD_H - CH))
+
+xdotool windowsize "$WIN" "$NW" "$NH"
+NEW_FW=$((NW + EXTRA_W)); NEW_FH=$((NH + EXTRA_H))
+
+PAD_L=96; PAD_R=96; PAD_T=32; PAD_B=32
+
+# determine quadrant: prefer state file, fall back to edge-proximity
+SAVED_WIN="" SAVED_Q=-1
+[ -f "$STATE" ] && read -r SAVED_WIN SAVED_Q < "$STATE"
+
+if [ "$SAVED_WIN" = "$WIN" ] && [ "$SAVED_Q" -ge 0 ]; then
+  QUAD=$SAVED_Q
+else
+  NEAR_TOP=0; NEAR_LEFT=0
+  [ $((OLD_Y - PAD_T)) -le $((SCREEN_HEIGHT - OLD_Y - OLD_H - PAD_B)) ] && NEAR_TOP=1
+  [ $((OLD_X - PAD_L)) -le $((SCREEN_WIDTH - OLD_X - OLD_W - PAD_R)) ] && NEAR_LEFT=1
+  if   [ "$NEAR_LEFT" -eq 1 ] && [ "$NEAR_TOP" -eq 1 ]; then QUAD=0
+  elif [ "$NEAR_LEFT" -eq 0 ] && [ "$NEAR_TOP" -eq 1 ]; then QUAD=1
+  elif [ "$NEAR_LEFT" -eq 0 ] && [ "$NEAR_TOP" -eq 0 ]; then QUAD=2
+  else QUAD=3
+  fi
+fi
+
+case $QUAD in
+  0) xdotool windowmove "$PARENT" "$PAD_L" "$PAD_T" ;;
+  1) xdotool windowmove "$PARENT" $((SCREEN_WIDTH - NEW_FW - PAD_R)) "$PAD_T" ;;
+  2) xdotool windowmove "$PARENT" $((SCREEN_WIDTH - NEW_FW - PAD_R)) $((SCREEN_HEIGHT - NEW_FH - PAD_B)) ;;
+  3) xdotool windowmove "$PARENT" "$PAD_L" $((SCREEN_HEIGHT - NEW_FH - PAD_B)) ;;
+esac
+
+printf '%s %s\n' "$WIN" "$QUAD" > "$STATE"

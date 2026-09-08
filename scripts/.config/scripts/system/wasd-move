@@ -1,0 +1,25 @@
+#!/bin/bash
+# Nudge window position WASD-style (nudge by STEP pixels)
+# Usage: wasd-move h|j|k|l
+#   h = left, j = down, k = up, l = right
+
+STEP=50
+
+DIR="${1:-}"
+[ -z "$DIR" ] && echo "Usage: $0 h|j|k|l" && exit 1
+
+WIN=$(xdotool getactivewindow)
+PARENT=$(xwininfo -id "$WIN" -children | sed -n 's/.*Parent window id: //p' | tr -d ' ')
+
+eval "$(xdotool getwindowgeometry --shell "$PARENT" 2>/dev/null)"
+
+case "$DIR" in
+  h) NX=$((X - STEP)); NY="$Y" ;;
+  j) NX="$X";        NY=$((Y + STEP)) ;;
+  k) NX="$X";        NY=$((Y - STEP)) ;;
+  l) NX=$((X + STEP)); NY="$Y" ;;
+  *) echo "Usage: $0 h|j|k|l" && exit 1 ;;
+esac
+
+xdotool windowmove "$PARENT" "$NX" "$NY"
+xdotool windowraise "$WIN"

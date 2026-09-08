@@ -1,0 +1,40 @@
+#!/bin/bash
+# Quadrant position cycle: TL → TR → BR → BL (forward) or reverse (backward)
+# Usage: quadrant-cycle [ -d +1 | -1 ]
+#   -d +1  (or omitted)  → forward cycle
+#   -d -1                → backward cycle
+
+DIR="${1:-+1}"
+case "$1" in
+  -d) DIR="$2" ;;
+esac
+
+WIN=$(xdotool getactivewindow)
+PARENT=$(xwininfo -id "$WIN" -children | sed -n 's/.*Parent window id: //p' | tr -d ' ')
+STATE="$HOME/.cache/quadrant-state"
+
+read -r SCREEN_WIDTH SCREEN_HEIGHT < <(xdotool getdisplaygeometry)
+eval "$(xdotool getwindowgeometry --shell "$PARENT" 2>/dev/null)"
+PW="$WIDTH"; PH="$HEIGHT"
+
+PAD_L=96
+PAD_R=96
+PAD_TL=32
+PAD_TR=32
+PAD_B=32
+
+SAVED_WIN=""; CUR=-1
+[ -f "$STATE" ] && read -r SAVED_WIN CUR < "$STATE"
+[ "$SAVED_WIN" != "$WIN" ] && CUR=-1
+
+NEXT=$(( (CUR + DIR + 4) % 4 ))
+case $NEXT in
+  0) NX=$PAD_L;  NY=$PAD_TL ;;
+  1) NX=$((SCREEN_WIDTH - PW - PAD_R));  NY=$PAD_TR ;;
+  2) NX=$((SCREEN_WIDTH - PW - PAD_R));  NY=$((SCREEN_HEIGHT - PH - PAD_B)) ;;
+  3) NX=$PAD_L;  NY=$((SCREEN_HEIGHT - PH - PAD_B)) ;;
+esac
+
+printf '%s %s\n' "$WIN" "$NEXT" > "$STATE"
+xdotool windowmove "$PARENT" "$NX" "$NY"
+xdotool windowraise "$WIN"

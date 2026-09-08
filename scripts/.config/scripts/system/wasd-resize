@@ -1,0 +1,31 @@
+#!/bin/bash
+# Resize window incrementally WASD-style, keeping position in place
+# Uses resize-atomic to send position+size in one ConfigureRequest.
+# Usage: wasd-resize h|j|k|l
+#   h = narrower, j = taller, k = shorter, l = wider
+
+STEP=50
+
+DIR="${1:-}"
+[ -z "$DIR" ] && echo "Usage: $0 h|j|k|l" && exit 1
+
+WIN=$(xdotool getactivewindow)
+
+# Content window current size
+eval "$(xdotool getwindowgeometry --shell "$WIN")"
+CW="$WIDTH"; CH="$HEIGHT"
+
+case "$DIR" in
+  h) NW=$((CW - STEP)); NH="$CH" ;;
+  j) NW="$CW";          NH=$((CH + STEP)) ;;
+  k) NW="$CW";          NH=$((CH - STEP)) ;;
+  l) NW=$((CW + STEP)); NH="$CH" ;;
+  *) echo "Usage: $0 h|j|k|l" && exit 1 ;;
+esac
+
+# Clamp to sane minimums
+[ "$NW" -lt 200 ] && NW=200
+[ "$NH" -lt 200 ] && NH=200
+
+# Resize atomically with position preserved
+/home/croc/.config/scripts/system/resize-atomic "$WIN" "$NW" "$NH"

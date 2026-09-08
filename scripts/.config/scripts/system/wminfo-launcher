@@ -1,0 +1,10 @@
+#!/bin/sh
+# wminfo is a Window Maker dockapp; only run it under Window Maker (not dwm).
+pgrep -x wmaker >/dev/null 2>&1 || exit 0
+# If wminfo is not present/runnable, notify once so the user knows the panel is missing.
+if ! command -v wminfo >/dev/null 2>&1; then
+  notify-send -u low -t 5000 "wminfo" "wminfo dockapp not installed; panel unavailable." 2>/dev/null
+  exit 0
+fi
+. ~/.cache/wal/colors.sh
+exec wminfo -p /home/croc/.config/scripts/system/wminfo-custom -u 10 -f "$foreground" -b "$background"
