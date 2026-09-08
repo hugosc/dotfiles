@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Sensor info
 echo "Available sensors:" > /tmp/dwmblocks_debug.log

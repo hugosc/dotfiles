@@ -20,81 +20,124 @@ last_stored_hash=""
 # Store clipboard content
 store_clipboard() {
     local cur_hash=""
+    local content=""
+    local targets=""
     
-    # Check if clipboard contains file URIs (skip these - they're for drag-and-drop)
-    if timeout 2 xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -qi "text/uri-list"; then
-        return
-    fi
+    targets=$(timeout 2 xclip -selection clipboard -t TARGETS -o 2>/dev/null) || return
     
-    # Check if clipboard contains an image
-    if timeout 2 xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -qi "image/png"; then
-        # Handle image
-        local tmp=$(mktemp --suffix=.png)
+    # Image (check first: image apps often also set text/uri-list for drag-and-drop)
+    if echo "$targets" | grep -qiE "image/(png|jpeg)"; then
+        local tmp=$(mktemp --suffix=.clip)
         
-        if timeout 2 xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null; then
-            # Verify it's a valid PNG file using file command
-            if ! file "$tmp" 2>/dev/null | grep -q "PNG image data"; then
-                # Not a real PNG image
+        if timeout 2 xclip -selection clipboard -t image/png -o >"$tmp" 2>/dev/null ||
+           timeout 2 xclip -selection clipboard -t image/jpeg -o >"$tmp" 2>/dev/null; then
+            local fmt
+            fmt=$(file "$tmp" 2>/dev/null)
+            local ext="png"
+            ! echo "$fmt" | grep -qi "PNG image data" && ext="jpg"
+            if ! echo "$fmt" | grep -qiE "PNG image data|JPEG image data"; then
                 rm -f "$tmp"
                 return
             fi
             
-            # Verify it's not too small (at least 1KB)
             local size=$(stat -f%z "$tmp" 2>/dev/null || stat -c%s "$tmp" 2>/dev/null)
             if [[ $size -lt 1000 ]]; then
-                # Too small, probably corrupt
                 rm -f "$tmp"
                 return
             fi
             
-            # Check if it's a duplicate
             cur_hash=$(sha256sum "$tmp" | awk '{print $1}')
             if [[ "$cur_hash" == "$last_stored_hash" ]]; then
                 rm -f "$tmp"
                 return
             fi
             
-            # Store image with timestamp
-            local hist_file="$HIST_DIR/$(date '+%Y%m%d_%H%M%S').png"
+            local hist_file="$HIST_DIR/$(date '+%Y%m%d_%H%M%S').$ext"
             mv "$tmp" "$hist_file" 2>/dev/null
             
-            # Send notification with thumbnail
             notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" 2>/dev/null || true
             
             last_stored_hash="$cur_hash"
         else
             rm -f "$tmp"
         fi
-        
-    else
-        # Handle text
-        if text=$(timeout 2 xclip -selection clipboard -o 2>/dev/null); then
-            # Skip empty or very short text
-            [[ -z "$text" ]] && return
-            [[ ${#text} -lt 3 ]] && return
-            
-            # Check for duplicate
-            cur_hash=$(printf "%s" "$text" | sha256sum | awk '{print $1}')
-            if [[ "$cur_hash" == "$last_stored_hash" ]]; then
-                return
-            fi
-            
-            # Store in cliphist
-            printf "%s" "$text" | cliphist store 2>/dev/null || true
-            last_stored_hash="$cur_hash"
-        fi
+        return
     fi
+    
+    # File URIs (text/uri-list) — from yazi/dirvish file-copy
+    if echo "$targets" | grep -qi "text/uri-list"; then
+        # Retry: clipnotify fires before xclip finishes writing
+        content=""
+        for _ in 1 2 3; do
+            content=$(timeout 1 xclip -selection clipboard -t text/uri-list -o 2>/dev/null) && break
+            sleep 0.1
+        done
+        [[ -z "$content" ]] && return
+
+        local filehist="$HOME/.cache/filehist/log"
+        mkdir -p "$(dirname "$filehist")"
+        touch "$filehist"
+
+        local all_images=true
+        local first_name=""
+        while IFS= read -r uri; do
+            [[ -z "$uri" ]] && continue
+            local decoded
+            decoded=$(printf "%s" "$uri" | sed 's|^file://||' | python3 -c "import sys,urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" 2>/dev/null)
+            [[ -z "$decoded" ]] && continue
+            [[ -z "$first_name" ]] && first_name="$decoded"
+
+            local ext="${decoded##*.}"
+            ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+            case "$ext" in png|jpg|jpeg)
+                ;;  # Images go to hist_dir, skip filehist
+            *)
+                all_images=false
+                grep -Fxq "$decoded" "$filehist" 2>/dev/null || printf "%s\n" "$decoded" >> "$filehist"
+                ;;
+            esac
+        done <<< "$content"
+
+        last_stored_hash="$(printf "%s" "$content" | sha256sum | awk '{print $1}')"
+
+        if [[ -n "$first_name" ]]; then
+            if $all_images && [[ -f "$first_name" ]]; then
+                local ext="${first_name##*.}"
+                ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+                local hist_file="$HIST_DIR/$(date '+%Y%m%d_%H%M%S').$ext"
+                cp "$first_name" "$hist_file" 2>/dev/null || true
+                notify-send --urgency=low -i "$hist_file" "$(printf '\uf0c6') clip history" \
+                            "$(basename "$first_name")" 2>/dev/null || true
+            else
+                notify-send --urgency=low "$(printf '\uf0c6') clip history" \
+                            "$(basename "$first_name")" 2>/dev/null || true
+            fi
+        fi
+        return
+    fi
+    
+    # Text (try clipboard, then primary for Emacs selections)
+    content=$(timeout 2 xclip -selection clipboard -o 2>/dev/null) || true
+    if [[ -z "$content" ]]; then
+        content=$(timeout 2 xclip -selection primary -o 2>/dev/null) || return
+    fi
+    [[ -z "$content" ]] && return
+    [[ ${#content} -lt 3 ]] && return
+    
+    cur_hash=$(printf "%s" "$content" | sha256sum | awk '{print $1}')
+    [[ "$cur_hash" == "$last_stored_hash" ]] && return
+    
+    printf "%s" "$content" | cliphist store 2>/dev/null || true
+    last_stored_hash="$cur_hash"
 }
 
 # Use clipnotify if available (event-driven)
 if command -v clipnotify >/dev/null 2>&1; then
-    echo "Using clipnotify (event-driven mode)" >&2
     while clipnotify 2>/dev/null; do
         store_clipboard
     done
 else
     # Fallback to polling
-    echo "Using polling mode (install clipnotify for better performance)" >&2
     while true; do
         store_clipboard
         sleep 0.5

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/dash
 
 # Weather script for dwmblocks using wttr.in
 # Caches result for 20 minutes to avoid excessive API calls

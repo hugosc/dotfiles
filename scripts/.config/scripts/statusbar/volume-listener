@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Event-driven volume updates for dwmblocks.
 # Listens to PulseAudio/PipeWire events and triggers the volume block refresh.

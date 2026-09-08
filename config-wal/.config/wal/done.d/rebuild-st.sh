@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Reload Xresources for st (st will reload via signal)
 
 # Kill USR1 to all st instances to reload Xresources

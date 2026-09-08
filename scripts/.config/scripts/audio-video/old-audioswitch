@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Set audio sinks before using!
 # `pactl list sinks` if on pulseaudio.
 

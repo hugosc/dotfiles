@@ -9,32 +9,45 @@ if [[ -z "$DMENU_COLORS" ]]; then
     DMENU_COLORS=$(/home/croc/dotfiles/scripts/.config/scripts/helpers/dmenu-colors)
 fi
 
-# Get full list once (this is the slowest operation ~1.6s for 750 items)
-full_list=$(cliphist list 2>/dev/null)
-text_list="$full_list"
+# Check what clipboard history types are available
+has_text=false
+[[ -n "$(cliphist list 2>/dev/null)" ]] && has_text=true
 
-# Check if we have images in the hist directory (used by imgcliphist)
 HIST_DIR=~/.cache/hist
 has_images=false
-if [[ -d "$HIST_DIR" ]] && [[ -n "$(ls -A "$HIST_DIR"/*.png 2>/dev/null)" ]]; then
-    has_images=true
+[[ -d "$HIST_DIR" ]] && [[ -n "$(ls -A "$HIST_DIR"/*.png 2>/dev/null)" ]] && has_images=true
+
+FILEHIST=~/.cache/filehist/log
+has_files=false
+[[ -f "$FILEHIST" ]] && [[ -s "$FILEHIST" ]] && has_files=true
+
+# Build menu and count items
+menu=""
+count=0
+$has_text   && menu="${menu}Text\n"   && ((count++))
+$has_images && menu="${menu}Images\n" && ((count++))
+$has_files  && menu="${menu}Files\n"  && ((count++))
+
+if [[ $count -eq 0 ]]; then
+    notify-send --urgency=low "Clipboard" "No clipboard history yet"
+    exit 0
 fi
 
-# Show choice menu if we have both text and images
-if [[ -n "$text_list" ]] && [[ "$has_images" == "true" ]]; then
-    choice=$(printf "Text\nImages" | dmenu $DMENU_COLORS -c -l 2 -p "Clipboard:" -i -fn "Iosevka Nerd Font:size=10")
+# If multiple types, show dmenu choice; otherwise auto-select
+if [[ $count -gt 1 ]]; then
+    choice=$(printf "$menu" | dmenu $DMENU_COLORS -c -l "$count" -p "Clipboard:" -i -fn "Iosevka Nerd Font:size=10")
 else
-    # If only one type exists, skip the menu
-    choice=$([[ "$has_images" == "true" ]] && echo "Images" || echo "Text")
+    choice=$(printf "$menu" | head -1 | sed 's/\\n//')
 fi
 
 case "$choice" in
     Text)
-        # Use fzf picker with delete support in a terminal window
         ~/.config/scripts/shortcuts-menus/txtcliphist-fzf sel &
         ;;
     Images)
-        # Use fzfub-based image picker
         ~/.config/scripts/images-photos-wallpapers/imgcliphist sel &
+        ;;
+    Files)
+        ~/.config/scripts/shortcuts-menus/filecliphist sel &
         ;;
 esac

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Wrapper script to pick and save pywal backend preference
 # Called from fzfub wallpaper menu with ctrl-b
@@ -7,7 +7,7 @@
 backend=$(/home/croc/dotfiles/scripts/.config/scripts/images-photos-wallpapers/wallpaper-backend-picker)
 
 # If user cancelled, exit
-if [[ -z "$backend" ]]; then
+if [ -z "$backend" ]; then
     exit 0
 fi
 

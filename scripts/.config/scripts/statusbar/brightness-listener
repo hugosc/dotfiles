@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Event-driven brightness updates for dwmblocks.
 # Watches for kernel udev backlight events and triggers the brightness block refresh.

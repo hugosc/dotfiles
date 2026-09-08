@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Extract colors from Xresources for dmenu
 # Uses the wal-generated colors from xrdb
 

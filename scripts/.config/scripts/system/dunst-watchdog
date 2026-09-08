@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Dunst watchdog - auto-restarts dunst if it crashes
 # Run this in the background or add to your session startup
 

@@ -17,6 +17,6 @@ gui:
     selectedRangeBgColor:
       - "#383838"
 git:
-  pagers:
+  diffRenderers:
     - colorArg: always
-      pager: delta --dark --paging=never
+      command: delta --dark --paging=never

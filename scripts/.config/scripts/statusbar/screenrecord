@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # dwmblocks status for screen recording
 # Shows black dot when recording, empty otherwise (respects separators)

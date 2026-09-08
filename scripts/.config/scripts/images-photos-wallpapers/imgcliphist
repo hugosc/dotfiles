@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Image clipboard history using fzfub
 
 HIST_DIR=~/.cache/hist

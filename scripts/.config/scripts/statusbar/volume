@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Volume status script for dwmblocks
 # Uses PulseAudio/PipeWire with pactl

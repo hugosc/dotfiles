@@ -1,2 +1,2 @@
-#!/usr/bin/env bash
-printf "%(%A, %B %e  %_I:%M%P )T\n"
+#!/usr/bin/dash
+date "+%A, %B %e  %_I:%M%P "

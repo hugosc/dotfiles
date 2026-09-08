@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Toggle trackpad based on external mouse presence
 # Detects when USB mice are plugged in/out and disables/enables trackpad

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Trackpad daemon - monitors for mouse connection/disconnection
 # Disables Elan Touchpad when USB mouse is plugged in
@@ -23,7 +23,7 @@ check_mouse_connected() {
 disable_trackpad() {
     if [ -e "$TRACKPAD_EVENT" ]; then
         # Try various methods to disable the trackpad
-        if command -v xinput &> /dev/null; then
+        if command -v xinput >/dev/null 2>&1; then
             # Method 1: Using xinput if available
             xinput disable "Elan Touchpad" 2>/dev/null
         fi
@@ -36,7 +36,7 @@ disable_trackpad() {
 enable_trackpad() {
     if [ -e "$TRACKPAD_EVENT" ]; then
         # Try various methods to enable the trackpad
-        if command -v xinput &> /dev/null; then
+        if command -v xinput >/dev/null 2>&1; then
             # Method 1: Using xinput if available
             xinput enable "Elan Touchpad" 2>/dev/null
         fi

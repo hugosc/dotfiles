@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Rebuild dwmblocks and dwm with screen recording support
 
 set -e

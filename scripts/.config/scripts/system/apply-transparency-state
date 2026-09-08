@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Apply saved transparency state to a window
 # Usage: apply-transparency-state [--all|--last] <window_class>
 # Called when new windows are created

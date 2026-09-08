@@ -1,2 +1,4 @@
 #!/bin/bash
-~/.local/bin/fzfub-wallpapermenu "$1" dark
+p="${1#*$'\x1f'}"
+fzfub-wallpapermenu "$p" dark
+fzfub-wallpaper-save "$p" mode dark

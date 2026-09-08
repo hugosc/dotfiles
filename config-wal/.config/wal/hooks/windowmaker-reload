@@ -1,35 +1,53 @@
-#!/bin/bash
-# Auto-reload WindowMaker colors when pywal changes
-# SIMPLIFIED VERSION - only essential colors
+#!/bin/sh
+# Apply pywal titlebar colours to the WindowMaker plist.
+# Write in-place (same inode) so wmaker's inotify watch stays alive.
+#
+# This must be called BEFORE wmaker receives SIGUSR2 (which triggers
+# "rereading defaults + reload dock"), so the plist already contains
+# the correct titlebar values when wmaker repaints.
 
-# Only run if WindowMaker is running
 if ! pgrep -x wmaker >/dev/null 2>&1; then
     exit 0
 fi
 
-# Source pywal colors
 . ~/.cache/wal/colors.sh
 
-# Conservative theming - only the most essential colors
-# These update automatically on window focus, no restart needed
+PLIST="$HOME/GNUstep/Defaults/WindowMaker"
+[ -f "$PLIST" ] || exit 1
 
-# Focused window titlebar
-wdwrite WindowMaker FTitleColor "\"$foreground\"" 2>/dev/null
-wdwrite WindowMaker FTitleBack "(solid, \"$color1\")" 2>/dev/null
+python3 - "$PLIST" "$color0" "$color1" "$foreground" "$color8" <<'PY'
+import os, re, sys
 
-# Unfocused window titlebar  
-wdwrite WindowMaker UTitleColor "\"$color8\"" 2>/dev/null
-wdwrite WindowMaker UTitleBack "(solid, \"$color0\")" 2>/dev/null
+plist, c0, c1, fg, c8 = sys.argv[1:]
 
-# Window borders
-wdwrite WindowMaker FrameFocusedBorderColor "\"$color1\"" 2>/dev/null
-wdwrite WindowMaker FrameBorderColor "\"$color8\"" 2>/dev/null
-wdwrite WindowMaker FrameSelectedBorderColor "\"$foreground\"" 2>/dev/null
+with open(plist) as f:
+    c = f.read()
 
-# Workspace background gradient
-wdwrite WindowMaker WorkspaceBack "(vgradient, \"$color8\", \"$background\")" 2>/dev/null
+pairs = {
+    'FTitleColor':           '"' + c0 + '"',
+    'FTitleBack':           '(solid, "' + c1 + '")',
+    'UTitleColor':          '"' + fg + '"',
+    'UTitleBack':          '(solid, "' + c0 + '")',
+    'FrameFocusedBorderColor': '"' + c1 + '"',
+    'FrameBorderColor':     '"' + c8 + '"',
+    'FrameSelectedBorderColor': '"' + fg + '"',
+}
 
-# Colors will apply on next window focus change
-# No restart needed!
+for key, val in pairs.items():
+    c = re.sub(
+        r'(' + re.escape(key) + r'\s*=\s*).*',
+        r'\1' + val + ';',
+        c
+    )
+
+with open(plist, 'w') as f:
+    f.write(c)
+    f.flush()
+    os.fsync(f.fileno())
+PY
+
+# Fallback nudge for cases where no subsequent SIGUSR2 fires (e.g.
+# standalone wallpaper switches without a dockapp reload).
+xdotool search --class wmaker windowactivate 2>/dev/null || true
 
 exit 0

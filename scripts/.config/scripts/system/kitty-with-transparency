@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Fast kitty launcher with transparency state (optimized)
 
 STATE_FILE="/tmp/transparency-state"

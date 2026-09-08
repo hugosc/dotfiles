@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 cleanup() {
 echo "" > /tmp/timericon;
@@ -14,7 +14,7 @@ while [ $TOTAL_SECONDS -gt 0 ]; do
     echo "  $MIN $SEC " > /tmp/timericon;
     pkill -RTMIN+3 dwmblocks;
     sleep 1
-    ((TOTAL_SECONDS--))
+    TOTAL_SECONDS=$((TOTAL_SECONDS - 1))
 done
 
 notify-send "Timer ended, take a break"

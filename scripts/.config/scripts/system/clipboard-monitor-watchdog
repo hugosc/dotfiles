@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Watchdog that keeps clipboard-monitor running
 # Restarts it if it crashes
 

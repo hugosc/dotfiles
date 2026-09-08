@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # relative path to mpd's music directory *must* be used. absolute path will not be read by mpd.
 
 file="$(mpc listall | dmenu -i -l 1)" || exit 0

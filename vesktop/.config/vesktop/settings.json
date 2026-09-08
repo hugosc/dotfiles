@@ -1,26 +1,19 @@
 {
-    "discordBranch": "ptb",
-    "minimizeToTray": true,
     "arRPC": true,
-    "splashColor": "rgb(203, 192, 192)",
-    "splashBackground": "rgb(67, 67, 65)",
-    "tray": true,
-    "customTitleBar": false,
-    "spellCheckLanguages": [
-        "en-GB",
-        "en"
-    ],
-    "hardwareVideoAcceleration": false,
+    "splashColor": "rgb(193, 193, 193)",
+    "splashBackground": "rgb(0, 0, 0)",
+    "hardwareVideoAcceleration": true,
+    "hardwareAcceleration": true,
+    "staticTitle": true,
     "enableSplashScreen": false,
-    "clickTrayToShowHide": true,
+    "tray": true,
     "appBadge": false,
+    "splashPixelated": false,
+    "disableMinSize": true,
+    "discordBranch": "stable",
     "audio": {
-        "deviceSelect": true,
-        "ignoreInputMedia": false,
         "ignoreDevices": false,
-        "granularSelect": true,
-        "onlyDefaultSpeakers": false,
-        "onlySpeakers": false
-    },
-    "hardwareAcceleration": true
+        "ignoreInputMedia": false,
+        "granularSelect": true
+    }
 }

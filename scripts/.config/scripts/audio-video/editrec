@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # ffmpeg editing process for my recordings: combining a phone video with a screen recording and a separate audio recording
 

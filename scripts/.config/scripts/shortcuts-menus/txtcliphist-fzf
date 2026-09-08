@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 # Text clipboard history picker using fzf + cliphist
 
-set -euo pipefail
+set -eu
 export DISPLAY="${DISPLAY:-:0}"
 
 run_picker() {
@@ -12,15 +12,18 @@ run_picker() {
         --layout=reverse \
         --border \
         --info=inline \
-        --header="tab: toggle-select | enter: copy | ctrl-d: delete multi | ctrl-r: refresh" \
+        --header="tab: toggle | shift-↑↓: range | ctrl-a: all | enter: copy | ctrl-d: delete multi | ctrl-r: refresh" \
         --bind 'tab:toggle' \
-        --bind 'ctrl-d:execute-silent(printf "%s\n" {+} | while IFS= read -r line; do printf "%s\n" "$line" | cliphist delete; done)+reload(cliphist list)' \
+        --bind 'shift-up:toggle+up' \
+        --bind 'shift-down:toggle+down' \
+        --bind 'ctrl-a:select-all' \
+        --bind 'ctrl-d:execute-silent(printf "%s\n" {+} | cliphist delete)' \
         --bind 'ctrl-r:reload(cliphist list)' \
         --preview 'printf "%s\n" {} | cliphist decode 2>/dev/null' \
         --preview-window='right:60%:wrap'
     )" || return 0
 
-    [[ -z "$selection" ]] && return 0
+    [ -z "$selection" ] && return 0
 
     if printf "%s\n" "$selection" | cliphist decode 2>/dev/null | xclip -selection clipboard 2>/dev/null; then
         notify-send --urgency=low "Clipboard" "Copied selection" 2>/dev/null || true

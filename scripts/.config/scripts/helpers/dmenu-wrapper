@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # dmenu wrapper that applies DWM colors (matching Super+P)
 
 # Read colors from Xresources

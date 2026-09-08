@@ -1,22 +1,28 @@
-#!/bin/bash
-# Copy file(s) to clipboard with proper MIME types for Discord/browsers
-# Usage: file-copy file1 [file2 ...]
+#!/usr/bin/dash
+# Copy file(s) to clipboard as text/uri-list for Discord/browsers.
+# Logs paths to file history for the clipboard manager picker.
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 file1 [file2 ...]"
     exit 1
 fi
 
-# Build URI list
+FILEHIST="$HOME/.cache/filehist/log"
+mkdir -p "$(dirname "$FILEHIST")"
+touch "$FILEHIST" 2>/dev/null
+
 uri_list=""
 for file in "$@"; do
-    # Convert to absolute path
     abs_path=$(realpath "$file" 2>/dev/null || echo "$file")
-    
-    # Convert to file:// URI
     uri="file://$(python3 -c "import urllib.parse; print(urllib.parse.quote('$abs_path'))")"
-    uri_list+="$uri"$'\n'
+    uri_list="${uri_list}${uri}
+"
+    ext="${abs_path##*.}"
+    ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+    case "$ext" in png|jpg|jpeg) ;; *)
+        grep -Fxq "$abs_path" "$FILEHIST" 2>/dev/null || echo "$abs_path" >> "$FILEHIST"
+        ;;
+    esac
 done
 
-# Copy URI list to clipboard
-echo -n "$uri_list" | xclip -selection clipboard -t text/uri-list
+printf "%s" "$uri_list" | xclip -selection clipboard -t text/uri-list

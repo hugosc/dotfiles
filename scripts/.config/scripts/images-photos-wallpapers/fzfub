@@ -17,12 +17,7 @@ UB_PID=$(cat "$UB_PID_FILE")
 
 export SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
 
-# fzf optional settings:
-# first argument: directory
-# second argument: preset options
-# third argument: any other options
-# example using wallpapermenu opts:
-# fzfub ~/pics w --tac
+FINDPRINT=''
 
 case $2 in
 *x) # image picker (wallpaper + clipboard)
@@ -32,12 +27,20 @@ case $2 in
   IMGFILTER='yes'
   ;;
 *w) # wallpapermenu options
-  FZFARGS='enter:execute-silent(fzfub-wallpaper-dark {}),ctrl-l:execute-silent(fzfub-wallpaper-light {}),ctrl-f:execute-silent(fzfub-wallpaper-medium {}),ctrl-w:execute-silent(fzfub-wallpaper-only {}),ctrl-b:execute-silent(fzfub-wallpaper-backend),ctrl-t:execute-silent(fzfub-wallpaper-theme {}),ctrl-e:become(gimp {+} > /dev/null 2>&1),ctrl-d:ignore'
+  FZFARGS='enter:execute-silent(fzfub-wallpaper-restore {}),ctrl-d:execute-silent(fzfub-wallpaper-dark {}),ctrl-l:execute-silent(fzfub-wallpaper-light {}),ctrl-f:execute-silent(fzfub-wallpaper-medium {}),ctrl-w:execute-silent(fzfub-wallpaper-only {}),ctrl-b:execute-silent(fzfub-wallpaper-backend),ctrl-t:execute-silent(fzfub-wallpaper-theme {}),ctrl-e:become(gimp {+} > /dev/null 2>&1),ctrl-p:become(fzfub-dockapp-preset)'
   ILABEL='Wallpaper Menu'
-  LABEL='[enter/*d*ark  *l*ight  ctrl-*f* medium  ctrl-*w* only  ctrl-*b* backend  ctrl-*t* theme]'
+  LABEL='[enter restore  ctrl-d dark  ctrl-l light  ctrl-f medium  ctrl-w only  ctrl-b backend  ctrl-t theme  ctrl-p dock]'
   IMGFILTER='yes'
+  FINDPRINT='yes'
   ;;
-*m) # ₊⊹ɪᴍɢᴍɢᴋ⊹₊ options
+*wl) # wallpaper picker (from loadout context)
+  FZFARGS='enter:execute-silent(fzfub-wallpaper-only '\''{}'\''),ctrl-d:execute-silent(fzfub-wallpaper-dark '\''{}'\''),ctrl-l:execute-silent(fzfub-wallpaper-light '\''{}'\''),ctrl-f:execute-silent(fzfub-wallpaper-medium '\''{}'\''),ctrl-b:execute-silent(fzfub-wallpaper-backend),ctrl-t:execute-silent(fzfub-wallpaper-theme '\''{}'\''),ctrl-p:become(fzfub-dockapp-preset)'
+  ILABEL='Wallpaper Picker'
+  LABEL='[enter set  ctrl-d dark  ctrl-l light  ctrl-f medium  ctrl-b backend  ctrl-t theme  ctrl-p dock]'
+  IMGFILTER='yes'
+  FINDPRINT='yes'
+  ;;
+*m) # image editor options
   FZFARGS='ctrl-r:become(fzfubrefresh {}),ctrl-e:execute-silent(imgmgk stripexif {})+become(fzfubrefresh {}),alt-j:execute-silent(imgmgk jpg {})+become(fzfubrefresh {}),alt-p:execute-silent(imgmgk png {})+become(fzfubrefresh {}),ctrl-d:execute(rm -i {} && notify-send {} deleted)+become(fzfubrefresh {}),ctrl-s:execute-silent(imgmgk scale {+})+become(fzfubrefresh {}),ctrl-b:execute-silent(imgmgk bw {+})+become(fzfubrefresh {}),ctrl-w:execute-silent(imgmgk wm {+})+become(fzfubrefresh {}),ctrl-g:become(gimp {+} > /dev/null 2>&1),ctrl-t:execute-silent(imgmgk transparency {+})+become(fzfubrefresh {}),ctrl-f:execute-silent(imgmgk flip {+})+become(fzfubrefresh {}),ctrl-v:execute-silent(imgmgk vflip {+})+become(fzfubrefresh {}),ctrl-l:execute-silent(imgmgk border {+})+become(fzfubrefresh {}),ctrl-h:execute-silent(imgmgk wborder {+})+become(fzfubrefresh {})'
   ILABEL="Image Editor (alt: jpg/png | ctrl: delete/exif/bw/watermark)"
   LABEL="[*g*→gimp *t*ransparent *f*/*v*flip *l*black/*h*white border]"
@@ -49,16 +52,20 @@ case $2 in
   FZFARGS='enter:execute(cliphist-copy-image {})+accept,ctrl-c:execute(cliphist-copy-image {})+accept,ctrl-d:execute(rm {})+reload(find '"$1"' -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \)),ctrl-g:become(gimp {+} > /dev/null 2>&1)'
   IMGFILTER='yes'
   ;;
-*) FZFARGS='ctrl-d:execute(rm -i {} && notify-send {} deleted)' ;; # normal options
+*) FZFARGS='ctrl-d:execute(rm -i {} && notify-send {} deleted)' ;;
 esac
 
-# run fzf with preview and given vars
 if [ "$IMGFILTER" = "yes" ]; then
-	find "${1:-.}" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) | \
-	fzf $3 -m --bind "$FZFARGS" --style ${STYLE:-full} --reverse --preview-border --preview-label "$LABEL" --input-label "$ILABEL" --preview="ueberzugpp cmd -s $SOCKET -i fzfpreview -a add \
+	if [ "$FINDPRINT" = "yes" ]; then
+		eval "find \"${1:-.}\" -type f \( -iname \"*.jpg\" -o -iname \"*.jpeg\" -o -iname \"*.png\" -o -iname \"*.gif\" -o -iname \"*.webp\" \) -printf '%f\037%p\n'" | \
+		fzf $3 -m --with-nth 1 --delimiter $'\x1f' --bind "$FZFARGS" --style ${STYLE:-full} --reverse --preview-border --preview-label "$LABEL" --input-label "$ILABEL" --preview="fzfub-preview {}"
+	else
+		find "${1:-.}" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) | \
+		fzf $3 -m --bind "$FZFARGS" --style ${STYLE:-full} --reverse --preview-border --preview-label "$LABEL" --input-label "$ILABEL" --preview="ueberzugpp cmd -s $SOCKET -i fzfpreview -a add \
                              -x \$FZF_PREVIEW_LEFT -y \$FZF_PREVIEW_TOP \
                              --max-width \$FZF_PREVIEW_COLUMNS --max-height \$FZF_PREVIEW_LINES \
                              -f {} 2>/dev/null || bat --style=plain --color=always {}"
+	fi
 else
 	fzf --walker-root=${1:-$PWD} $3 -m --bind "$FZFARGS" --style ${STYLE:-full} --reverse --preview-border --preview-label "$LABEL" --input-label "$ILABEL" --preview="ueberzugpp cmd -s $SOCKET -i fzfpreview -a add \
                              -x \$FZF_PREVIEW_LEFT -y \$FZF_PREVIEW_TOP \

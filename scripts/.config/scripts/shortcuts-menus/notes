@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 folder=$HOME/notes/
 
@@ -12,7 +12,7 @@ newnote () { \
 
 selected () { \
   choice=$(
-    echo -e "New\n$(find $folder -type f -printf '%T@ %P\n' | sort -nr | cut -d' ' -f2-)" | dmenu -c -l 5 -i -p "Choose note or create new: "
+    printf "New\n%s\n" "$(find $folder -type f -printf '%T@ %P\n' | sort -nr | cut -d' ' -f2-)" | dmenu -c -l 5 -i -p "Choose note or create new: "
   )
   case $choice in
     New) newnote ;;

@@ -86,8 +86,10 @@ start_recording() {
 	# Save the PID for stopping later
 	echo $! > "${REC_FLAG}.pid"
 	
-	# Signal dwmblocks to update (signal 12 for screenrecord block)
-	pkill -RTMIN+2 dwmblocks
+	notify-send --urgency=normal "Recording started" "$geometry @ $output"
+	
+	# Signal dwmblocks to update (if running)
+	pkill -RTMIN+2 dwmblocks 2>/dev/null
 }
 
 stop_recording() {
@@ -129,8 +131,8 @@ stop_recording() {
 	# Give time for file to be written
 	sleep 1
 	
-	# Signal dwmblocks to update (signal 12 for screenrecord block)
-	pkill -RTMIN+2 dwmblocks
+	# Signal dwmblocks to update (if running)
+	pkill -RTMIN+2 dwmblocks 2>/dev/null
 	
 	# Copy file URI to clipboard like file managers do (text/uri-list format)
 	# This allows pasting into Discord as if drag-dropping from a file manager

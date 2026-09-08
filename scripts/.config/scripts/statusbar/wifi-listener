@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Event-driven WiFi updates for dwmblocks (NetworkManager).
 # Triggers refresh when NetworkManager reports changes.

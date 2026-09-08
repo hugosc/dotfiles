@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Show centered dmenu with all available pywal backends
 # Returns selected backend name or exits if cancelled
@@ -13,7 +13,7 @@ backends=$(wal --backend 2>&1 | grep '^ -' | sed 's/^ - //' | sort)
 selected=$(echo "$backends" | dmenu $DMENU_COLORS -c -i -l 10 -p "Select Backend:" -fn "Iosevka Nerd Font:size=10")
 
 # If user cancels or selects nothing, exit
-if [[ -z "$selected" ]]; then
+if [ -z "$selected" ]; then
     exit 1
 fi
 

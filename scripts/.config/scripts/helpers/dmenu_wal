@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Wrapper for dmenu that uses pywal/Xresources colors
 
 # Read colors from Xresources

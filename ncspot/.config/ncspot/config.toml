@@ -8,6 +8,7 @@ ap_port = 443
 [keybindings]
 "Shift+q" = "quit"
 "q" = "noop"
+"f" = "search"
 # Escape key to quit
 "Esc" = "back"
 "Backspace" = "noop"

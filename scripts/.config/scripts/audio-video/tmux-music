@@ -22,7 +22,8 @@ ensure_session() {
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         return 0
     fi
-    tmux new-session -d -s "$SESSION_NAME" ncspot
+    tmux new-session -d -s "$SESSION_NAME"
+    NCSPOT_NEEDS_START=1
 }
 
 position_music_window() {
@@ -52,6 +53,9 @@ position_music_window() {
 if [ -n "$TMUX" ]; then
     ensure_session
     tmux switch-client -t "$SESSION_NAME"
+    if [ "${NCSPOT_NEEDS_START:-0}" = 1 ]; then
+        tmux send-keys -t "$SESSION_NAME" ncspot Enter
+    fi
     exit 0
 fi
 
@@ -66,3 +70,9 @@ fi
 
 st -c music -n music -g "$GEOM" -e tmux attach-session -t "$SESSION_NAME" &
 position_music_window
+
+# Start ncspot only after the terminal window exists and is positioned,
+# so ueberzugpp can find the X11 window on initialization.
+if [ "${NCSPOT_NEEDS_START:-0}" = 1 ]; then
+    tmux send-keys -t "$SESSION_NAME" ncspot Enter
+fi

@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/dash
 
 STATE_FILE="/tmp/transparency-state"
 PERSISTENT_STATE="$HOME/.cache/transparency-state"
 
 [ ! -f "$STATE_FILE" ] && ~/.config/scripts/system/init-transparency-state
 
-current_state=$(<"$STATE_FILE")
+current_state=$(cat "$STATE_FILE")
 
 if [ "$current_state" = "transparent" ]; then
   new_state="opaque"
@@ -18,23 +18,33 @@ fi
 printf '%s\n' "$new_state" > "$STATE_FILE"
 printf '%s\n' "$new_state" > "$PERSISTENT_STATE"
 
-emacsclient -e "(dolist (frame (frame-list)) (set-frame-parameter frame 'alpha-background $emacs_alpha))" &>/dev/null &
+emacsclient -e "(dolist (frame (frame-list)) (set-frame-parameter frame 'alpha-background $emacs_alpha))" >/dev/null 2>&1 &
 
-pkill -USR1 '^st$' &>/dev/null &
+# Compositor lifecycle: only run picom while transparency is actually on.
+if [ "$new_state" = "transparent" ]; then
+  if ! pgrep -x picom >/dev/null 2>&1; then
+    picom -b --dbus
+    sleep 0.3
+  fi
+else
+  pkill -x picom >/dev/null 2>&1 || true
+fi
+
+pkill -USR1 '^st$' >/dev/null 2>&1 &
 
 # Keep windowed apps in sync with the global toggle via _NET_WM_WINDOW_OPACITY.
 # These calls are no-ops if picom isn't running or if no windows exist.
-~/.config/scripts/system/apply-transparency-state --all "helium-browser" &>/dev/null &
-~/.config/scripts/system/apply-transparency-state --all "helium" &>/dev/null &
-~/.config/scripts/system/apply-transparency-state --all "vesktop" &>/dev/null &
-~/.config/scripts/system/apply-transparency-state --all "Vesktop" &>/dev/null &
-~/.config/scripts/system/apply-transparency-state --all "discord" &>/dev/null &
-~/.config/scripts/system/apply-transparency-state --all "Discord" &>/dev/null &
+~/.config/scripts/system/apply-transparency-state --all "helium-browser" >/dev/null 2>&1 &
+~/.config/scripts/system/apply-transparency-state --all "helium" >/dev/null 2>&1 &
+~/.config/scripts/system/apply-transparency-state --all "vesktop" >/dev/null 2>&1 &
+~/.config/scripts/system/apply-transparency-state --all "Vesktop" >/dev/null 2>&1 &
+~/.config/scripts/system/apply-transparency-state --all "discord" >/dev/null 2>&1 &
+~/.config/scripts/system/apply-transparency-state --all "Discord" >/dev/null 2>&1 &
 
 # Signal dwm to update bar transparency on next event loop iteration
 dwm_pid=$(pidof dwm)
 if [ -n "$dwm_pid" ]; then
-  kill -USR1 "$dwm_pid" &>/dev/null
+  kill -USR1 "$dwm_pid" >/dev/null 2>&1
 fi
 
 wait

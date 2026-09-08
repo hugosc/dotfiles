@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
-# Apply a preset theme WITHOUT changing the wallpaper
-# Called by Ctrl+T in wallpaper menu
+wallpaper="${1#*$'\x1f'}"
 
-# Show theme picker dmenu
 theme=$(~/.config/scripts/images-photos-wallpapers/wallpaper-theme-picker)
+[[ -z "$theme" ]] && exit 0
 
-# If user cancelled, exit
-if [[ -z "$theme" ]]; then
-    exit 0
-fi
-
-# Apply the theme to the current setup (NO wallpaper change)
-# Use a dummy argument to trigger the theme-only case in fzfub-wallpapermenu
 fzfub-wallpapermenu "theme-only" "$theme"
+fzfub-wallpaper-save "$wallpaper" theme "$theme"

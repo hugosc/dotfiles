@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # pywal colorscheme hook - runs after wal generates colors
 
 # Link Xresources 

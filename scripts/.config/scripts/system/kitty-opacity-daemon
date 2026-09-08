@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Daemon that watches for new kitty windows and applies stored opacity state
 # Should be started in .xinitrc or similar
 

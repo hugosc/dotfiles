@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/dash
 
 # Brightness status script for dwmblocks
 # Uses brightnessctl
@@ -21,9 +21,9 @@ else
     ICON=$(printf "\uf186")
 fi
 
+# Click handler
 echo "$ICON $PERCENT%"
 
-# Click handler
 case $BLOCK_BUTTON in
     4) brightnessctl set +5% > /dev/null ;;   # Scroll up: increase
     5) brightnessctl set 5%- > /dev/null ;;   # Scroll down: decrease

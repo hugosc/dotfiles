@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 TEMP_STATE="/tmp/transparency-state"
 PERSISTENT_STATE="$HOME/.cache/transparency-state"
@@ -8,6 +8,6 @@ PERSISTENT_STATE="$HOME/.cache/transparency-state"
 if [ -f "$PERSISTENT_STATE" ]; then
     cp "$PERSISTENT_STATE" "$TEMP_STATE"
 else
-    printf 'transparent\n' > "$TEMP_STATE"
-    printf 'transparent\n' > "$PERSISTENT_STATE"
+    printf 'opaque\n' > "$TEMP_STATE"
+    printf 'opaque\n' > "$PERSISTENT_STATE"
 fi

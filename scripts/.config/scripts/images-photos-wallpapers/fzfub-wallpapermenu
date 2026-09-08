@@ -29,7 +29,8 @@ wallpaper_boost_on() {
     WALLPAPER_BOOST_PREV=$(~/scripts/power-mode mode 2>/dev/null)
     # Apply in the background so the picker opens instantly; boost_off waits
     # for it to finish before restoring, keeping the restore race-free.
-    ~/scripts/power-mode performance >/dev/null 2>&1 &
+    # -q: silent (loadout system must not notify; manual toggles still do).
+    ~/scripts/power-mode -q performance >/dev/null 2>&1 &
     WALLPAPER_BOOST_PID=$!
 }
 wallpaper_boost_off() {
@@ -37,7 +38,7 @@ wallpaper_boost_off() {
     [ -n "$WALLPAPER_BOOST_PID" ] && wait "$WALLPAPER_BOOST_PID" 2>/dev/null
     # Restore the exact mode that was active before the boost (not the
     # current one, which is 'performance' because we just set it).
-    ~/scripts/power-mode "$WALLPAPER_BOOST_PREV" >/dev/null 2>&1 || true
+    ~/scripts/power-mode -q "$WALLPAPER_BOOST_PREV" >/dev/null 2>&1 || true
     WALLPAPER_BOOST_PREV=""
     WALLPAPER_BOOST_PID=""
 }
@@ -75,8 +76,6 @@ run_full_post_updates_async() {
     nohup bash ~/.config/wal/hooks/dunst-reload >/dev/null 2>&1 &
     nohup bash ~/.config/wal/hooks/emacs-theme-reload >/dev/null 2>&1 &
     nohup bash ~/.config/wal/hooks/windowmaker-reload >/dev/null 2>&1 &
-    # Restart wminfo to pick up new pywal colours
-    nohup bash -c 'killall wminfo 2>/dev/null; /home/croc/.config/scripts/system/wminfo-launcher &' >/dev/null 2>&1 &
     # Template regen + pywal16: run synchronously so the CPU boost (and the
     # EXIT trap that restores it) covers the actual heavy work.
     ~/dotfiles/scripts/.config/scripts/images-photos-wallpapers/regenerate-wal-templates >/dev/null 2>&1 || true
@@ -106,7 +105,9 @@ case "$#" in
   st -f 'Liberation Mono:pixelsize=14' -c fzfmenu -n fzfmenu -T fzf -g "160x25+${OFFSET_X}+${OFFSET_Y}" -e sh -c 'cat ~/.cache/wal/sequences 2>/dev/null; exec fzfub-loadout' || exit 0
   ;;
  1)
-    # Dark mode - default behavior when called with just wallpaper path
+    # Dark mode - default behavior when called with just wallpaper path.
+    # Silent boost for the non-picker path (e.g. Emacs loadout switcher).
+    wallpaper_boost_on
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
    if set-wallpaper "$1" &&
       wal -n -i "$1" --backend "$WAL_BACKEND"; then
@@ -119,6 +120,8 @@ case "$#" in
    # Handle both theme and dark/light/medium mode, or wallpaper-only mode, or theme-only mode
    if [[ "$1" == "theme-only" ]]; then
     # Apply preset theme WITHOUT changing wallpaper (theme-only mode from Ctrl+T)
+    # Silent boost for the non-picker path (e.g. Emacs loadout switcher).
+    wallpaper_boost_on
     if wal --theme "$2"; then
       . ~/.cache/wal/colors.sh && xrdb -merge - <<< "slock.background: $background"$'\n'"slock.init: $foreground"$'\n'"slock.input: $foreground"$'\n'"slock.failed: #CC3333"
       update_walcord_theme
@@ -129,6 +132,7 @@ case "$#" in
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     set-wallpaper "$1"
   elif [[ "$2" == "light" ]]; then
+    wallpaper_boost_on
     # Generate light colors, darken them slightly with optimized combined script
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     if set-wallpaper "$1" &&
@@ -140,6 +144,7 @@ case "$#" in
        run_full_post_updates_async
     fi
  elif [[ "$2" == "medium" ]]; then
+    wallpaper_boost_on
     # Generate light colors with much higher darkness and saturation
     ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
     if set-wallpaper "$1" &&
@@ -151,6 +156,7 @@ case "$#" in
         run_full_post_updates_async
       fi
     elif [[ "$2" == "dark" ]]; then
+    wallpaper_boost_on
       # Generate dark colors - regenerate templates to ensure no darkened values remain
       ln -sf "$1" "$TEMPIMG" >/dev/null 2>&1
       if set-wallpaper "$1" &&

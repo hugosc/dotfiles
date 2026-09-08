@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/dash
 
 # playerctl-loop ensures that when a track is skipped in the music player itself, it still updates on bar
 # Use setsid to properly detach the background process to avoid hanging popen

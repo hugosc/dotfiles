@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Toggle picom window transparency for kitty terminals
 # Toggles between 100% (opaque) and 85% (transparent)
 
