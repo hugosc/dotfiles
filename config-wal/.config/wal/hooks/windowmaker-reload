@@ -20,6 +20,10 @@ import os, re, sys
 
 plist, c0, c1, fg, c8 = sys.argv[1:]
 
+# Capture BEFORE the rewrite: a reader (wmaker) may have cached this value.
+# We must advance strictly past BOTH it and the post-write mtime.
+prev_mtime = os.stat(plist).st_mtime
+
 with open(plist) as f:
     c = f.read()
 
@@ -45,6 +49,11 @@ with open(plist, 'w') as f:
     f.flush()
     os.fsync(f.fileno())
 PY
+
+# Advance the plist mtime STRICTLY forward (session-monotonic). Without this
+# wmaker silently ignores every re-read trigger — see wm-plist-bump.
+~/.local/bin/wm-plist-bump 2>/dev/null || true
+
 
 # Fallback nudge for cases where no subsequent SIGUSR2 fires (e.g.
 # standalone wallpaper switches without a dockapp reload).
